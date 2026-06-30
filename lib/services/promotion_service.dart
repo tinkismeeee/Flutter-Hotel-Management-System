@@ -1,5 +1,8 @@
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
 import '../models/promotion.dart';
 
 class PromotionService {
@@ -11,16 +14,14 @@ class PromotionService {
   };
 
   static Future<List<Promotion>> getPromotions() async {
-    final response = await http.get(
-      Uri.parse(baseUrl),
-    );
+    final response = await http.get(Uri.parse(baseUrl));
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
       return data.map((e) => Promotion.fromJson(e)).toList();
-    } else {
-      throw Exception('Không thể tải danh sách khuyến mãi');
     }
+
+    throw Exception('Không thể tải danh sách mã giảm giá');
   }
 
   static Future<bool> addPromotion({
@@ -48,8 +49,8 @@ class PromotionService {
       }),
     );
 
-    print('ADD PROMOTION STATUS: ${response.statusCode}');
-    print('ADD PROMOTION BODY: ${response.body}');
+    debugPrint('ADD PROMOTION STATUS: ${response.statusCode}');
+    debugPrint('ADD PROMOTION BODY: ${response.body}');
 
     return response.statusCode == 200 || response.statusCode == 201;
   }
@@ -78,8 +79,8 @@ class PromotionService {
       }),
     );
 
-    print('UPDATE PROMOTION STATUS: ${response.statusCode}');
-    print('UPDATE PROMOTION BODY: ${response.body}');
+    debugPrint('UPDATE PROMOTION STATUS: ${response.statusCode}');
+    debugPrint('UPDATE PROMOTION BODY: ${response.body}');
 
     return response.statusCode == 200;
   }
@@ -90,8 +91,8 @@ class PromotionService {
       headers: headers,
     );
 
-    print('DELETE PROMOTION STATUS: ${response.statusCode}');
-    print('DELETE PROMOTION BODY: ${response.body}');
+    debugPrint('DELETE PROMOTION STATUS: ${response.statusCode}');
+    debugPrint('DELETE PROMOTION BODY: ${response.body}');
 
     return response.statusCode == 200 || response.statusCode == 204;
   }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../utils/app_colors.dart';
+import '../employee/employee_list_screen.dart';
+import '../promotion/promotion_list_screen.dart';
+import '../service/service_list_screen.dart';
 import 'daily_revenue_screen.dart';
 
 class StaffHomeScreen extends StatelessWidget {
@@ -78,6 +81,24 @@ class StaffHomeScreen extends StatelessWidget {
                 mainAxisSpacing: 16,
                 childAspectRatio: 1.08,
                 children: [
+                  staffButton(
+                    context,
+                    title: 'Nhân viên',
+                    icon: Icons.people_alt_rounded,
+                    screen: const EmployeeListScreen(),
+                  ),
+                  staffButton(
+                    context,
+                    title: 'Dịch vụ',
+                    icon: Icons.room_service_rounded,
+                    screen: const ServiceListScreen(),
+                  ),
+                  staffButton(
+                    context,
+                    title: 'Mã giảm giá',
+                    icon: Icons.discount_rounded,
+                    screen: const PromotionListScreen(),
+                  ),
                   staffButton(
                     context,
                     title: 'Doanh thu ngày',

@@ -1,75 +1,56 @@
 import 'package:flutter/material.dart';
 
-import '../../models/promotion.dart';
-import '../../services/promotion_service.dart';
+import '../../models/staff.dart';
+import '../../services/staff_service.dart';
 import '../../utils/app_colors.dart';
-import 'add_promotion_screen.dart';
-import 'edit_promotion_screen.dart';
+import 'add_employee_screen.dart';
+import 'edit_employee_screen.dart';
 
-class PromotionListScreen extends StatefulWidget {
-  const PromotionListScreen({super.key});
+class EmployeeListScreen extends StatefulWidget {
+  const EmployeeListScreen({super.key});
 
   @override
-  State<PromotionListScreen> createState() => _PromotionListScreenState();
+  State<EmployeeListScreen> createState() => _EmployeeListScreenState();
 }
 
-class _PromotionListScreenState extends State<PromotionListScreen> {
-  late Future<List<Promotion>> promotionFuture;
+class _EmployeeListScreenState extends State<EmployeeListScreen> {
+  late Future<List<Staff>> staffFuture;
 
   @override
   void initState() {
     super.initState();
-    promotionFuture = PromotionService.getPromotions();
+    staffFuture = StaffService.getStaffs();
   }
 
   void refreshData() {
     setState(() {
-      promotionFuture = PromotionService.getPromotions();
+      staffFuture = StaffService.getStaffs();
     });
-  }
-
-  String shortDate(String value) {
-    if (value.isEmpty) return '';
-    if (value.length >= 10) return value.substring(0, 10);
-    return value;
-  }
-
-  String scopeLabel(String value) {
-    switch (value) {
-      case 'room':
-        return 'Phòng';
-      case 'service':
-        return 'Dịch vụ';
-      default:
-        return 'Hóa đơn';
-    }
   }
 
   Future<void> goToAdd() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AddPromotionScreen()),
+      MaterialPageRoute(builder: (_) => const AddEmployeeScreen()),
     );
     refreshData();
   }
 
-  Future<void> goToEdit(Promotion promotion) async {
+  Future<void> goToEdit(Staff staff) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => EditPromotionScreen(promotion: promotion),
-      ),
+      MaterialPageRoute(builder: (_) => EditEmployeeScreen(staff: staff)),
     );
     refreshData();
   }
 
-  Future<void> confirmDelete(Promotion promotion) async {
+  Future<void> confirmDelete(Staff staff) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Xác nhận xóa'),
         content: Text(
-          'Bạn có chắc muốn xóa mã giảm giá ${promotion.name} không?',
+          'Bạn có chắc muốn xóa ${staff.firstName} ${staff.lastName}?',
         ),
         actions: [
           TextButton(
@@ -85,19 +66,12 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
     );
 
     if (result == true) {
-      final success = await PromotionService.deletePromotion(
-        promotion.promotionId,
-      );
-
+      final success = await StaffService.deleteStaff(staff.userId);
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            success
-                ? 'Xóa mã giảm giá thành công'
-                : 'Xóa mã giảm giá thất bại',
-          ),
+          content: Text(success ? 'Xóa thành công' : 'Xóa thất bại'),
         ),
       );
 
@@ -105,7 +79,7 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
     }
   }
 
-  Widget promotionCard(Promotion promotion) {
+  Widget staffCard(Staff staff) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
@@ -123,9 +97,16 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
       child: Row(
         children: [
           CircleAvatar(
-            radius: 28,
+            radius: 27,
             backgroundColor: AppColors.gold.withValues(alpha: 0.18),
-            child: const Icon(Icons.discount_rounded, color: AppColors.gold),
+            child: Text(
+              staff.firstName.isNotEmpty ? staff.firstName[0] : '?',
+              style: const TextStyle(
+                color: AppColors.gold,
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+              ),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -133,15 +114,16 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  promotion.name,
+                  '${staff.firstName} ${staff.lastName}',
                   style: const TextStyle(
                     color: AppColors.textDark,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
-                  promotion.promotionCode,
+                  staff.username,
                   style: const TextStyle(
                     color: AppColors.gold,
                     fontWeight: FontWeight.w600,
@@ -149,21 +131,18 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Giảm: ${promotion.discountValue.toStringAsFixed(0)}%',
+                  staff.email,
                   style: const TextStyle(color: AppColors.textGray),
                 ),
                 Text(
-                  '${shortDate(promotion.startDate)} - ${shortDate(promotion.endDate)}',
+                  staff.phoneNumber,
                   style: const TextStyle(color: AppColors.textGray),
                 ),
+                const SizedBox(height: 4),
                 Text(
-                  'Áp dụng: ${scopeLabel(promotion.scope)}',
-                  style: const TextStyle(color: AppColors.textGray),
-                ),
-                Text(
-                  promotion.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động',
+                  staff.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động',
                   style: TextStyle(
-                    color: promotion.isActive ? Colors.green : Colors.redAccent,
+                    color: staff.isActive ? Colors.green : Colors.redAccent,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -173,11 +152,11 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
           Column(
             children: [
               IconButton(
-                onPressed: () => goToEdit(promotion),
+                onPressed: () => goToEdit(staff),
                 icon: const Icon(Icons.edit_rounded, color: AppColors.gold),
               ),
               IconButton(
-                onPressed: () => confirmDelete(promotion),
+                onPressed: () => confirmDelete(staff),
                 icon: const Icon(Icons.delete_rounded, color: Colors.redAccent),
               ),
             ],
@@ -189,6 +168,7 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
 
   Widget header() {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       decoration: const BoxDecoration(
         color: AppColors.navy,
@@ -205,7 +185,7 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
           ),
           const Expanded(
             child: Text(
-              'Quản lý mã giảm giá',
+              'Quản lý nhân viên',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -223,11 +203,11 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
     );
   }
 
-  Widget promotionList(List<Promotion> promotions) {
-    if (promotions.isEmpty) {
+  Widget staffList(List<Staff> staffs) {
+    if (staffs.isEmpty) {
       return const Center(
         child: Text(
-          'Không có mã giảm giá',
+          'Không có nhân viên',
           style: TextStyle(color: AppColors.textDark),
         ),
       );
@@ -235,9 +215,9 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
 
     return ListView.builder(
       padding: const EdgeInsets.all(20),
-      itemCount: promotions.length,
+      itemCount: staffs.length,
       itemBuilder: (context, index) {
-        return promotionCard(promotions[index]);
+        return staffCard(staffs[index]);
       },
     );
   }
@@ -256,8 +236,8 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
           children: [
             header(),
             Expanded(
-              child: FutureBuilder<List<Promotion>>(
-                future: promotionFuture,
+              child: FutureBuilder<List<Staff>>(
+                future: staffFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
@@ -274,7 +254,7 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
                     );
                   }
 
-                  return promotionList(snapshot.data ?? []);
+                  return staffList(snapshot.data ?? []);
                 },
               ),
             ),

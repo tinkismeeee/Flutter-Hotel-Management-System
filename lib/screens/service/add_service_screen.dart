@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../services/hotel_service_service.dart';
 import '../../utils/app_colors.dart';
 
@@ -28,14 +29,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   }
 
   Future<void> addService() async {
+    final price = double.tryParse(priceController.text.trim());
+
     if (serviceCodeController.text.trim().isEmpty ||
         nameController.text.trim().isEmpty ||
-        priceController.text.trim().isEmpty ||
+        price == null ||
         descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đầy đủ thông tin'),
-        ),
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin hợp lệ')),
       );
       return;
     }
@@ -47,7 +48,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     final success = await HotelServiceService.addService(
       serviceCode: serviceCodeController.text.trim(),
       name: nameController.text.trim(),
-      price: double.parse(priceController.text.trim()),
+      price: price,
       availability: availability,
       description: descriptionController.text.trim(),
     );
@@ -70,11 +71,11 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   }
 
   Widget inputField(
-      String label,
-      TextEditingController controller, {
-        TextInputType type = TextInputType.text,
-        int maxLines = 1,
-      }) {
+    String label,
+    TextEditingController controller, {
+    TextInputType type = TextInputType.text,
+    int maxLines = 1,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       child: TextField(
@@ -85,19 +86,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           labelText: label,
           filled: true,
           fillColor: Colors.white,
-          labelStyle: const TextStyle(
-            color: AppColors.textGray,
-          ),
+          labelStyle: const TextStyle(color: AppColors.textGray),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
             borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(
-              color: AppColors.gold,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: AppColors.gold, width: 2),
           ),
         ),
       ),
@@ -118,10 +114,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(
-              Icons.arrow_back,
-              color: AppColors.gold,
-            ),
+            icon: const Icon(Icons.arrow_back, color: AppColors.gold),
           ),
           const Expanded(
             child: Text(
@@ -148,33 +141,25 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         child: Column(
           children: [
             header(),
-
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
-                  inputField(
-                    'Mã dịch vụ',
-                    serviceCodeController,
-                  ),
-                  inputField(
-                    'Tên dịch vụ',
-                    nameController,
-                  ),
+                  inputField('Mã dịch vụ', serviceCodeController),
+                  inputField('Tên dịch vụ', nameController),
                   inputField(
                     'Giá',
                     priceController,
-                    type: TextInputType.number,
+                    type: const TextInputType.numberWithOptions(decimal: true),
                   ),
                   inputField(
                     'Mô tả',
                     descriptionController,
                     maxLines: 4,
                   ),
-
                   SwitchListTile(
                     value: availability,
-                    activeColor: AppColors.gold,
+                    activeThumbColor: AppColors.gold,
                     title: const Text(
                       'Khả dụng',
                       style: TextStyle(
@@ -188,17 +173,13 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                       });
                     },
                   ),
-
                   const SizedBox(height: 20),
-
                   ElevatedButton(
                     onPressed: isLoading ? null : addService,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.gold,
                       foregroundColor: AppColors.navy,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 15,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                       ),

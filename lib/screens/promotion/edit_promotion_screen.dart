@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../models/promotion.dart';
 import '../../services/promotion_service.dart';
 import '../../utils/app_colors.dart';
@@ -29,7 +30,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
   @override
   void initState() {
     super.initState();
-
     nameController = TextEditingController(text: widget.promotion.name);
     discountController = TextEditingController(
       text: widget.promotion.discountValue.toStringAsFixed(0),
@@ -43,15 +43,8 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
     descriptionController = TextEditingController(
       text: widget.promotion.description,
     );
-
     scope = widget.promotion.scope.isEmpty ? 'invoice' : widget.promotion.scope;
     isActive = widget.promotion.isActive;
-  }
-
-  String shortDate(String value) {
-    if (value.isEmpty) return '';
-    if (value.length >= 10) return value.substring(0, 10);
-    return value;
   }
 
   @override
@@ -64,30 +57,40 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
     super.dispose();
   }
 
+  String shortDate(String value) {
+    if (value.isEmpty) return '';
+    if (value.length >= 10) return value.substring(0, 10);
+    return value;
+  }
+
   Future<void> pickDate(TextEditingController controller) async {
+    final initialDate =
+        DateTime.tryParse(controller.text.trim()) ?? DateTime.now();
+
     final date = await showDatePicker(
       context: context,
-      initialDate: DateTime(2025, 12, 1),
+      initialDate: initialDate,
       firstDate: DateTime(2024),
-      lastDate: DateTime(2030),
+      lastDate: DateTime(2035),
     );
 
     if (date != null) {
       controller.text =
-      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-'
+          '${date.day.toString().padLeft(2, '0')}';
     }
   }
 
   Future<void> updatePromotion() async {
+    final discount = double.tryParse(discountController.text.trim());
+
     if (nameController.text.trim().isEmpty ||
-        discountController.text.trim().isEmpty ||
+        discount == null ||
         startDateController.text.trim().isEmpty ||
         endDateController.text.trim().isEmpty ||
         descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đầy đủ thông tin'),
-        ),
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin hợp lệ')),
       );
       return;
     }
@@ -99,7 +102,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
     final success = await PromotionService.updatePromotion(
       id: widget.promotion.promotionId,
       name: nameController.text.trim(),
-      discountValue: double.parse(discountController.text.trim()),
+      discountValue: discount,
       startDate: startDateController.text.trim(),
       endDate: endDateController.text.trim(),
       scope: scope,
@@ -117,8 +120,8 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
       SnackBar(
         content: Text(
           success
-              ? 'Cập nhật khuyến mãi thành công'
-              : 'Cập nhật khuyến mãi thất bại',
+              ? 'Cập nhật mã giảm giá thành công'
+              : 'Cập nhật mã giảm giá thất bại',
         ),
       ),
     );
@@ -127,13 +130,13 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
   }
 
   Widget inputField(
-      String label,
-      TextEditingController controller, {
-        TextInputType type = TextInputType.text,
-        bool readOnly = false,
-        VoidCallback? onTap,
-        int maxLines = 1,
-      }) {
+    String label,
+    TextEditingController controller, {
+    TextInputType type = TextInputType.text,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    int maxLines = 1,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       child: TextField(
@@ -153,10 +156,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(
-              color: AppColors.gold,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: AppColors.gold, width: 2),
           ),
         ),
       ),
@@ -176,9 +176,9 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
           value: scope,
           isExpanded: true,
           items: const [
-            DropdownMenuItem(value: 'invoice', child: Text('invoice')),
-            DropdownMenuItem(value: 'room', child: Text('room')),
-            DropdownMenuItem(value: 'service', child: Text('service')),
+            DropdownMenuItem(value: 'invoice', child: Text('Hóa đơn')),
+            DropdownMenuItem(value: 'room', child: Text('Phòng')),
+            DropdownMenuItem(value: 'service', child: Text('Dịch vụ')),
           ],
           onChanged: (value) {
             setState(() {
@@ -208,7 +208,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
           ),
           const Expanded(
             child: Text(
-              'Sửa khuyến mãi',
+              'Sửa mã giảm giá',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -231,7 +231,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
         child: Column(
           children: [
             header(),
-
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(20),
@@ -244,7 +243,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'Mã khuyến mãi: ${widget.promotion.promotionCode}',
+                      'Mã giảm giá: ${widget.promotion.promotionCode}',
                       style: const TextStyle(
                         color: AppColors.navy,
                         fontWeight: FontWeight.bold,
@@ -252,12 +251,11 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
                       ),
                     ),
                   ),
-
-                  inputField('Tên khuyến mãi', nameController),
+                  inputField('Tên mã giảm giá', nameController),
                   inputField(
                     'Giá trị giảm (%)',
                     discountController,
-                    type: TextInputType.number,
+                    type: const TextInputType.numberWithOptions(decimal: true),
                   ),
                   inputField(
                     'Ngày bắt đầu',
@@ -271,18 +269,15 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
                     readOnly: true,
                     onTap: () => pickDate(endDateController),
                   ),
-
                   scopeDropdown(),
-
                   inputField(
                     'Mô tả',
                     descriptionController,
                     maxLines: 4,
                   ),
-
                   SwitchListTile(
                     value: isActive,
-                    activeColor: AppColors.gold,
+                    activeThumbColor: AppColors.gold,
                     title: const Text(
                       'Đang hoạt động',
                       style: TextStyle(
@@ -296,9 +291,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
                       });
                     },
                   ),
-
                   const SizedBox(height: 20),
-
                   ElevatedButton(
                     onPressed: isLoading ? null : updatePromotion,
                     style: ElevatedButton.styleFrom(
@@ -312,7 +305,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
                     child: Text(
                       isLoading
                           ? 'Đang cập nhật...'
-                          : 'Cập nhật khuyến mãi',
+                          : 'Cập nhật mã giảm giá',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

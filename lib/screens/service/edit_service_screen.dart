@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../models/hotel_service.dart';
 import '../../services/hotel_service_service.dart';
 import '../../utils/app_colors.dart';
@@ -26,10 +27,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
   @override
   void initState() {
     super.initState();
-
-    nameController = TextEditingController(
-      text: widget.service.name,
-    );
+    nameController = TextEditingController(text: widget.service.name);
     priceController = TextEditingController(
       text: widget.service.price.toStringAsFixed(0),
     );
@@ -48,13 +46,13 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
   }
 
   Future<void> updateService() async {
+    final price = double.tryParse(priceController.text.trim());
+
     if (nameController.text.trim().isEmpty ||
-        priceController.text.trim().isEmpty ||
+        price == null ||
         descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đầy đủ thông tin'),
-        ),
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin hợp lệ')),
       );
       return;
     }
@@ -66,7 +64,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
     final success = await HotelServiceService.updateService(
       id: widget.service.serviceId,
       name: nameController.text.trim(),
-      price: double.parse(priceController.text.trim()),
+      price: price,
       availability: availability,
       description: descriptionController.text.trim(),
     );
@@ -80,9 +78,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          success
-              ? 'Cập nhật dịch vụ thành công'
-              : 'Cập nhật dịch vụ thất bại',
+          success ? 'Cập nhật dịch vụ thành công' : 'Cập nhật dịch vụ thất bại',
         ),
       ),
     );
@@ -91,11 +87,11 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
   }
 
   Widget inputField(
-      String label,
-      TextEditingController controller, {
-        TextInputType type = TextInputType.text,
-        int maxLines = 1,
-      }) {
+    String label,
+    TextEditingController controller, {
+    TextInputType type = TextInputType.text,
+    int maxLines = 1,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       child: TextField(
@@ -106,19 +102,14 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
           labelText: label,
           filled: true,
           fillColor: Colors.white,
-          labelStyle: const TextStyle(
-            color: AppColors.textGray,
-          ),
+          labelStyle: const TextStyle(color: AppColors.textGray),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
             borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(
-              color: AppColors.gold,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: AppColors.gold, width: 2),
           ),
         ),
       ),
@@ -139,10 +130,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(
-              Icons.arrow_back,
-              color: AppColors.gold,
-            ),
+            icon: const Icon(Icons.arrow_back, color: AppColors.gold),
           ),
           const Expanded(
             child: Text(
@@ -169,7 +157,6 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
         child: Column(
           children: [
             header(),
-
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(20),
@@ -190,25 +177,20 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
                       ),
                     ),
                   ),
-
-                  inputField(
-                    'Tên dịch vụ',
-                    nameController,
-                  ),
+                  inputField('Tên dịch vụ', nameController),
                   inputField(
                     'Giá',
                     priceController,
-                    type: TextInputType.number,
+                    type: const TextInputType.numberWithOptions(decimal: true),
                   ),
                   inputField(
                     'Mô tả',
                     descriptionController,
                     maxLines: 4,
                   ),
-
                   SwitchListTile(
                     value: availability,
-                    activeColor: AppColors.gold,
+                    activeThumbColor: AppColors.gold,
                     title: const Text(
                       'Khả dụng',
                       style: TextStyle(
@@ -222,25 +204,19 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
                       });
                     },
                   ),
-
                   const SizedBox(height: 20),
-
                   ElevatedButton(
                     onPressed: isLoading ? null : updateService,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.gold,
                       foregroundColor: AppColors.navy,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 15,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                       ),
                     ),
                     child: Text(
-                      isLoading
-                          ? 'Đang cập nhật...'
-                          : 'Cập nhật dịch vụ',
+                      isLoading ? 'Đang cập nhật...' : 'Cập nhật dịch vụ',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../services/promotion_service.dart';
 import '../../utils/app_colors.dart';
 
@@ -35,28 +36,29 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
   Future<void> pickDate(TextEditingController controller) async {
     final date = await showDatePicker(
       context: context,
-      initialDate: DateTime(2025, 12, 1),
+      initialDate: DateTime.now(),
       firstDate: DateTime(2024),
-      lastDate: DateTime(2030),
+      lastDate: DateTime(2035),
     );
 
     if (date != null) {
       controller.text =
-      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-'
+          '${date.day.toString().padLeft(2, '0')}';
     }
   }
 
   Future<void> addPromotion() async {
+    final discount = double.tryParse(discountController.text.trim());
+
     if (promotionCodeController.text.trim().isEmpty ||
         nameController.text.trim().isEmpty ||
-        discountController.text.trim().isEmpty ||
+        discount == null ||
         startDateController.text.trim().isEmpty ||
         endDateController.text.trim().isEmpty ||
         descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đầy đủ thông tin'),
-        ),
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin hợp lệ')),
       );
       return;
     }
@@ -68,7 +70,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
     final success = await PromotionService.addPromotion(
       promotionCode: promotionCodeController.text.trim(),
       name: nameController.text.trim(),
-      discountValue: double.parse(discountController.text.trim()),
+      discountValue: discount,
       startDate: startDateController.text.trim(),
       endDate: endDateController.text.trim(),
       scope: scope,
@@ -86,8 +88,8 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
       SnackBar(
         content: Text(
           success
-              ? 'Thêm khuyến mãi thành công'
-              : 'Thêm khuyến mãi thất bại',
+              ? 'Thêm mã giảm giá thành công'
+              : 'Thêm mã giảm giá thất bại',
         ),
       ),
     );
@@ -96,13 +98,13 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
   }
 
   Widget inputField(
-      String label,
-      TextEditingController controller, {
-        TextInputType type = TextInputType.text,
-        bool readOnly = false,
-        VoidCallback? onTap,
-        int maxLines = 1,
-      }) {
+    String label,
+    TextEditingController controller, {
+    TextInputType type = TextInputType.text,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    int maxLines = 1,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       child: TextField(
@@ -122,10 +124,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(
-              color: AppColors.gold,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: AppColors.gold, width: 2),
           ),
         ),
       ),
@@ -145,9 +144,9 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
           value: scope,
           isExpanded: true,
           items: const [
-            DropdownMenuItem(value: 'invoice', child: Text('invoice')),
-            DropdownMenuItem(value: 'room', child: Text('room')),
-            DropdownMenuItem(value: 'service', child: Text('service')),
+            DropdownMenuItem(value: 'invoice', child: Text('Hóa đơn')),
+            DropdownMenuItem(value: 'room', child: Text('Phòng')),
+            DropdownMenuItem(value: 'service', child: Text('Dịch vụ')),
           ],
           onChanged: (value) {
             setState(() {
@@ -177,7 +176,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
           ),
           const Expanded(
             child: Text(
-              'Thêm khuyến mãi',
+              'Thêm mã giảm giá',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -200,17 +199,16 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
         child: Column(
           children: [
             header(),
-
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
-                  inputField('Mã khuyến mãi', promotionCodeController),
-                  inputField('Tên khuyến mãi', nameController),
+                  inputField('Mã giảm giá', promotionCodeController),
+                  inputField('Tên mã giảm giá', nameController),
                   inputField(
                     'Giá trị giảm (%)',
                     discountController,
-                    type: TextInputType.number,
+                    type: const TextInputType.numberWithOptions(decimal: true),
                   ),
                   inputField(
                     'Ngày bắt đầu',
@@ -224,18 +222,15 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
                     readOnly: true,
                     onTap: () => pickDate(endDateController),
                   ),
-
                   scopeDropdown(),
-
                   inputField(
                     'Mô tả',
                     descriptionController,
                     maxLines: 4,
                   ),
-
                   SwitchListTile(
                     value: isActive,
-                    activeColor: AppColors.gold,
+                    activeThumbColor: AppColors.gold,
                     title: const Text(
                       'Đang hoạt động',
                       style: TextStyle(
@@ -249,9 +244,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
                       });
                     },
                   ),
-
                   const SizedBox(height: 20),
-
                   ElevatedButton(
                     onPressed: isLoading ? null : addPromotion,
                     style: ElevatedButton.styleFrom(
@@ -263,9 +256,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
                       ),
                     ),
                     child: Text(
-                      isLoading
-                          ? 'Đang thêm...'
-                          : 'Thêm khuyến mãi',
+                      isLoading ? 'Đang thêm...' : 'Thêm mã giảm giá',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
