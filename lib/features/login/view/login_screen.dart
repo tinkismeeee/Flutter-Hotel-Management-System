@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/models/user_model.dart';
+import '../../forgot_password/view/forgot_password_screen.dart';
 import '../../signup/view/signup_screen.dart';
 import '../controller/login_controller.dart';
 
@@ -243,7 +244,13 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const Spacer(),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const ForgotPasswordPage(),
+                          ),
+                        );
+                      },
                       style: ButtonStyle(
                         overlayColor: WidgetStateProperty.all(
                           Colors.transparent,
