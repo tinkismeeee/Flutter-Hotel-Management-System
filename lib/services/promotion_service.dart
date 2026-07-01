@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import '../models/promotion.dart';
 
 class PromotionService {
-  static const String baseUrl = 'http://143.198.221.127/api/promotions';
+  static const String baseUrl = 'http://143.198.221.127/api/Promotions';
 
   static const Map<String, String> headers = {
     'Content-Type': 'application/json',

@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/invoice.dart';
 
 class InvoiceService {
-  static const String baseUrl = 'http://143.198.221.127/api/invoices';
+  static const String baseUrl = 'http://143.198.221.127/api/Invoices';
 
   static const Map<String, String> headers = {
     'Content-Type': 'application/json',

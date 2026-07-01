@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import '../models/hotel_service.dart';
 
 class HotelServiceService {
-  static const String baseUrl = 'http://143.198.221.127/api/services';
+  static const String baseUrl = 'http://143.198.221.127/api/Services';
 
   static const Map<String, String> headers = {
     'Content-Type': 'application/json',
