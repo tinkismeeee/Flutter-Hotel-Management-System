@@ -6,9 +6,8 @@ import '../../../core/models/room_model.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserModel user;
-  final VoidCallback onLoggedOut;
 
-  const HomeScreen({super.key, required this.user, required this.onLoggedOut});
+  const HomeScreen({super.key, required this.user});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();

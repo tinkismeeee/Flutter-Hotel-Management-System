@@ -15,7 +15,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  int sessionVersion = 0;
   UserModel? sessionUser;
 
   void setSessionUser(UserModel user) {
@@ -24,21 +23,13 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  void clearSessionUser() {
-    setState(() {
-      sessionUser = null;
-      sessionVersion++;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: sessionUser != null
-          ? HomeScreen(user: sessionUser!, onLoggedOut: clearSessionUser)
+          ? HomeScreen(user: sessionUser!)
           : FutureBuilder<UserModel?>(
-              key: ValueKey(sessionVersion),
               future: UserModel.loadCurrentUser(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
@@ -52,7 +43,7 @@ class _MyAppState extends State<MyApp> {
                   return LoginPage(onLoggedIn: setSessionUser);
                 }
 
-                return HomeScreen(user: user, onLoggedOut: clearSessionUser);
+                return HomeScreen(user: user);
               },
             ),
     );
