@@ -1,4 +1,13 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../const/api_endpoints.dart';
+
 class UserModel {
+  static const _currentUserKey = 'current_user';
+
   final String userId;
   final String username;
   final String email;
@@ -28,52 +37,74 @@ class UserModel {
     this.isActive = true,
   });
 
-  // factory UserModel.fromJson(Map<String, dynamic> json) {
-  //   return UserModel(
-  //     userId: json['user_id'] ?? '',
-  //     username: json['username'] ?? '',
-  //     email: json['email'] ?? '',
-  //     password: json['password_hash'] ?? '',
-  //     firstName: json['first_name'] ?? '',
-  //     lastName: json['last_name'] ?? '',
-  //     phone: json['phone_number'] ?? '',
-  //     address: json['address'] ?? '',
-  //     dateOfBirth: json['date_of_birth'] ?? '',
-  //     idCardFont: json['id_card_front_image_url'] ?? '',
-  //     idCardBack: json['id_card_back_image_url'] ?? '',
-  //     isActive: json['is_active'] ?? true,
-  //   );
-  // }
-
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    return switch (json) {
-      {
-        'user_id': String userId,
-        'username': String username,
-        'email': String email,
-        'password_hash': String password,
-        'first_name': String firstName,
-        'last_name': String lastName,
-        'phone_number': String phone,
-        'address': String address,
-        'date_of_birth': String dateOfBirth,
-        'id_card_front_image_url': String idCardFont,
-        'id_card_back_image_url': String idCardBack,
-        'is_active': bool isActive
-      } => UserModel(
-          userId: userId,
-          username: username,
-          email: email,
-          password: password,
-          firstName: firstName,
-          lastName: lastName,
-          phone: phone,
-          address: address,
-          dateOfBirth: dateOfBirth,
-          idCardFont: idCardFont,
-          idCardBack: idCardBack,
-          isActive: isActive),
-      _ => throw Exception('Fail to load user data from API'),
+    return UserModel(
+      userId: json['user_id']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      password: json['password_hash']?.toString() ?? '',
+      firstName: json['first_name']?.toString() ?? '',
+      lastName: json['last_name']?.toString() ?? '',
+      phone: json['phone_number']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      dateOfBirth: json['date_of_birth']?.toString() ?? '',
+      idCardFont: json['id_card_front_image_url']?.toString() ?? '',
+      idCardBack: json['id_card_back_image_url']?.toString() ?? '',
+      isActive: json['is_active'] == true,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'user_id': userId,
+      'username': username,
+      'email': email,
+      'password_hash': password,
+      'first_name': firstName,
+      'last_name': lastName,
+      'phone_number': phone,
+      'address': address,
+      'date_of_birth': dateOfBirth,
+      'id_card_front_image_url': idCardFont,
+      'id_card_back_image_url': idCardBack,
+      'is_active': isActive,
     };
+  }
+
+  static Future<List<UserModel>> fetchAllUsers() async {
+    final response = await http.get(Uri.parse(ApiEndpoints.customer));
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body);
+      final usersJson = switch (jsonData) {
+        List<dynamic> data => data,
+        {'data': List<dynamic> data} => data,
+        _ => throw Exception('Invalid customer response'),
+      };
+
+      return usersJson
+          .map((user) => UserModel.fromJson(user as Map<String, dynamic>))
+          .toList();
+    }
+
+    throw Exception('Failed to fetch users: ${response.statusCode}');
+  }
+
+  static Future<void> saveCurrentUser(UserModel user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_currentUserKey, json.encode(user.toJson()));
+  }
+
+  static Future<UserModel?> loadCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString(_currentUserKey);
+    if (userJson == null) return null;
+
+    return UserModel.fromJson(json.decode(userJson) as Map<String, dynamic>);
+  }
+
+  static Future<void> clearCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_currentUserKey);
   }
 }

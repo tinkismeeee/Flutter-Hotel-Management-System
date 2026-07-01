@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/colors.dart';
-// import '../../../core/models/user_model.dart';
+import '../../../core/models/user_model.dart';
+import '../controller/login_controller.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final ValueChanged<UserModel>? onLoggedIn;
+
+  const LoginPage({super.key, this.onLoggedIn});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -11,13 +14,16 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+  final LoginController loginController = LoginController();
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   bool isPasswordHidden = true;
+  bool isLoading = false;
+  bool rememberPassword = false;
+  String? loginError;
 
-  // Biến này dùng để quyết định có hiển thị lỗi hay không
   bool showErrors = false;
 
   @override
@@ -27,9 +33,10 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void handleLogin() {
+  Future<void> handleLogin() async {
     setState(() {
       showErrors = true;
+      loginError = null;
     });
 
     final isValid = formKey.currentState!.validate();
@@ -44,6 +51,30 @@ class _LoginPageState extends State<LoginPage> {
     debugPrint('Email: $email');
     debugPrint('Password: $password');
 
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final user = await loginController.login(
+        email: email,
+        password: password,
+        rememberPassword: rememberPassword,
+      );
+      widget.onLoggedIn?.call(user);
+      debugPrint('Login successful for user: ${user.username}');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        loginError = 'Invalid email or password';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   void hideErrorsWhenUnfocus() {
@@ -67,9 +98,7 @@ class _LoginPageState extends State<LoginPage> {
       return 'Please enter your email address';
     }
 
-    final emailRegex = RegExp(
-      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,}$',
-    );
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,}$');
 
     if (!emailRegex.hasMatch(email)) {
       return 'Please enter a valid email address';
@@ -168,27 +197,68 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                const SizedBox(height: 12),
-
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    style: ButtonStyle(
-                      overlayColor: WidgetStateProperty.all(
-                        Colors.transparent,
-                      ),
-                    ),
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(
-                        color: CustomColors.forgotPasswordText,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Jost',
-                      ),
+                if (loginError != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    loginError!,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 13,
+                      fontFamily: 'Jost',
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
+                ],
+
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Radio<bool>(
+                      value: true,
+                      groupValue: rememberPassword,
+                      toggleable: true,
+                      onChanged: (value) {
+                        setState(() {
+                          rememberPassword = value ?? false;
+                        });
+                      },
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          rememberPassword = !rememberPassword;
+                        });
+                      },
+                      child: const Text(
+                        'Remember me',
+                        style: TextStyle(
+                          color: CustomColors.loginText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Jost',
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {},
+                      style: ButtonStyle(
+                        overlayColor: WidgetStateProperty.all(
+                          Colors.transparent,
+                        ),
+                      ),
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          color: CustomColors.forgotPasswordText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Jost',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 24),
@@ -197,7 +267,7 @@ class _LoginPageState extends State<LoginPage> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: handleLogin,
+                    onPressed: isLoading ? null : handleLogin,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: CustomColors.buttonBackground,
                       foregroundColor: CustomColors.buttonText,
@@ -206,14 +276,20 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      'Login',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Jost',
-                      ),
-                    ),
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Login',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Jost',
+                            ),
+                          ),
                   ),
                 ),
 
@@ -256,10 +332,7 @@ class _LoginPageState extends State<LoginPage> {
                 Row(
                   children: const [
                     Expanded(
-                      child: Divider(
-                        color: Color(0xFFE5E5E5),
-                        thickness: 1,
-                      ),
+                      child: Divider(color: Color(0xFFE5E5E5), thickness: 1),
                     ),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
@@ -274,10 +347,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     Expanded(
-                      child: Divider(
-                        color: Color(0xFFE5E5E5),
-                        thickness: 1,
-                      ),
+                      child: Divider(color: Color(0xFFE5E5E5), thickness: 1),
                     ),
                   ],
                 ),
@@ -299,9 +369,7 @@ class _LoginPageState extends State<LoginPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
-                        child: Image.asset(
-                          'assets/imgs/google_img.png',
-                        ),
+                        child: Image.asset('assets/imgs/google_img.png'),
                       ),
                     ),
                   ],
@@ -402,26 +470,17 @@ class CustomInputField extends StatelessWidget {
 
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: Color(0xFF171725),
-                width: 1,
-              ),
+              borderSide: const BorderSide(color: Color(0xFF171725), width: 1),
             ),
 
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: Colors.red,
-                width: 1,
-              ),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
             ),
 
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: Colors.red,
-                width: 1,
-              ),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
             ),
 
             errorStyle: const TextStyle(
