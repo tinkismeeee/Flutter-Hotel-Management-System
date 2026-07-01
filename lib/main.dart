@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'features/home/view/home_screen.dart';
 import './features/login/view/login_screen.dart';
 import 'core/models/user_model.dart';
+import 'core/theme/app_theme.dart';
 
 void main() {
   runApp(const MyApp());
@@ -27,6 +28,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
       home: sessionUser != null
           ? HomeScreen(user: sessionUser!)
           : FutureBuilder<UserModel?>(

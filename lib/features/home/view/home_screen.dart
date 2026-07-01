@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/models/user_model.dart';
+import '../../../core/theme/colors.dart';
 import '../controller/home_controller.dart';
 import '../../../core/models/room_model.dart';
 
@@ -15,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final HomeController homeController = HomeController();
+  final TextEditingController searchController = TextEditingController();
   final roomTypes = const [
     'All',
     'Standard',
@@ -29,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<RoomModel> filteredRooms = [];
   List<String> roomImageUrls = [];
   String selectedType = 'All';
+  String searchQuery = '';
 
   @override
   void initState() {
@@ -36,10 +39,16 @@ class _HomeScreenState extends State<HomeScreen> {
     homeFuture = loadHomeData();
   }
 
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
   Future<HomeData> loadHomeData() async {
     final data = await homeController.fetchHomeData();
     rooms = data.rooms;
-    filteredRooms = homeController.filterRooms(data.rooms, selectedType);
+    filteredRooms = applyFilters(data.rooms);
     roomImageUrls =
         data.roomImages
             .map((image) => image.urls.regular)
@@ -53,8 +62,32 @@ class _HomeScreenState extends State<HomeScreen> {
   void filterRooms(String type) {
     setState(() {
       selectedType = type;
-      filteredRooms = homeController.filterRooms(rooms, type);
+      filteredRooms = applyFilters(rooms);
     });
+  }
+
+  void searchRooms(String query) {
+    setState(() {
+      searchQuery = query.trim().toLowerCase();
+      filteredRooms = applyFilters(rooms);
+    });
+  }
+
+  List<RoomModel> applyFilters(List<RoomModel> source) {
+    final typedRooms = homeController.filterRooms(source, selectedType);
+    if (searchQuery.isEmpty) return typedRooms;
+
+    return typedRooms.where((room) {
+      final text = [
+        room.roomNumber,
+        room.roomTypeName,
+        room.description,
+        room.status,
+        room.floor.toString(),
+      ].join(' ').toLowerCase();
+
+      return text.contains(searchQuery);
+    }).toList();
   }
 
   @override
@@ -85,10 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 final data = await loadHomeData();
                 setState(() {
                   rooms = data.rooms;
-                  filteredRooms = homeController.filterRooms(
-                    data.rooms,
-                    selectedType,
-                  );
+                  filteredRooms = applyFilters(data.rooms);
                   roomImageUrls =
                       data.roomImages
                           .map((image) => image.urls.regular)
@@ -100,7 +130,22 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               child: CustomScrollView(
                 slivers: [
-                  SliverToBoxAdapter(child: _Header(user: widget.user)),
+                  SliverToBoxAdapter(
+                    child: _Header(
+                      user: widget.user,
+                      searchController: searchController,
+                      onSearchChanged: searchRooms,
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: _HomeSummary(
+                      totalRooms: rooms.length,
+                      visibleRooms: filteredRooms.length,
+                      availableRooms: rooms
+                          .where((room) => room.status == 'available')
+                          .length,
+                    ),
+                  ),
                   SliverToBoxAdapter(
                     child: _RoomTypeFilter(
                       roomTypes: roomTypes,
@@ -109,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
                     sliver: filteredRooms.isEmpty
                         ? const SliverToBoxAdapter(
                             child: Center(child: Text('No rooms found')),
@@ -182,63 +227,124 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _Header extends StatelessWidget {
   final UserModel user;
+  final TextEditingController searchController;
+  final ValueChanged<String> onSearchChanged;
 
-  const _Header({required this.user});
+  const _Header({
+    required this.user,
+    required this.searchController,
+    required this.onSearchChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     final fullName = '${user.firstName} ${user.lastName}'.trim();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
-      child: Row(
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: const Color(0xFFE8EAEC),
-            child: Text(
-              _initials(user),
-              style: const TextStyle(
-                color: Color(0xFF171725),
-                fontWeight: FontWeight.w700,
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: const Color(0xFFEEF4FF),
+                child: Text(
+                  _initials(user),
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Welcome back',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      fullName.isEmpty ? user.username : fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton.filledTonal(
+                onPressed: () {},
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.surface,
+                  foregroundColor: AppColors.textPrimary,
+                ),
+                icon: const Icon(Icons.notifications_none),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                onPressed: () {},
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.surface,
+                  foregroundColor: AppColors.textPrimary,
+                ),
+                icon: const Icon(Icons.history),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          const Text(
+            'Find your perfect room',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              height: 1.12,
+            ),
+          ),
+          const SizedBox(height: 18),
+          TextField(
+            controller: searchController,
+            onChanged: onSearchChanged,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search room number, type, status',
+              prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+              suffixIcon: searchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: () {
+                        searchController.clear();
+                        onSearchChanged('');
+                      },
+                      icon: const Icon(Icons.close, color: AppColors.textMuted),
+                    ),
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.primary),
               ),
             ),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fullName.isEmpty ? user.username : fullName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF171725),
-                    fontSize: 20,
-                    fontFamily: 'Jost',
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  user.address.isEmpty ? user.email : user.address,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF78828A),
-                    fontSize: 14,
-                    fontFamily: 'Jost',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none),
-          ),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.history)),
         ],
       ),
     );
@@ -250,6 +356,101 @@ class _Header extends StatelessWidget {
     final initials = '$first$last';
     if (initials.isNotEmpty) return initials.toUpperCase();
     return user.username.isEmpty ? '?' : user.username[0].toUpperCase();
+  }
+}
+
+class _HomeSummary extends StatelessWidget {
+  final int totalRooms;
+  final int visibleRooms;
+  final int availableRooms;
+
+  const _HomeSummary({
+    required this.totalRooms,
+    required this.visibleRooms,
+    required this.availableRooms,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: _SummaryItem(
+              label: 'Showing',
+              value: visibleRooms.toString(),
+              icon: Icons.hotel_outlined,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _SummaryItem(
+              label: 'Available',
+              value: availableRooms.toString(),
+              icon: Icons.check_circle_outline,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _SummaryItem(
+              label: 'Total',
+              value: totalRooms.toString(),
+              icon: Icons.meeting_room_outlined,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _SummaryItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: AppColors.primary),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
