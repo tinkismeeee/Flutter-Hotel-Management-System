@@ -24,22 +24,30 @@ class _HomeScreenState extends State<HomeScreen> {
     'Suite',
   ];
 
-  late Future<List<RoomModel>> roomsFuture;
+  late Future<HomeData> homeFuture;
   List<RoomModel> rooms = [];
   List<RoomModel> filteredRooms = [];
+  List<String> roomImageUrls = [];
   String selectedType = 'All';
 
   @override
   void initState() {
     super.initState();
-    roomsFuture = loadRooms();
+    homeFuture = loadHomeData();
   }
 
-  Future<List<RoomModel>> loadRooms() async {
-    final loadedRooms = await homeController.fetchRooms();
-    rooms = loadedRooms;
-    filteredRooms = homeController.filterRooms(loadedRooms, selectedType);
-    return loadedRooms;
+  Future<HomeData> loadHomeData() async {
+    final data = await homeController.fetchHomeData();
+    rooms = data.rooms;
+    filteredRooms = homeController.filterRooms(data.rooms, selectedType);
+    roomImageUrls =
+        data.roomImages
+            .map((image) => image.urls.regular)
+            .where((url) => url.isNotEmpty)
+            .toSet()
+            .toList()
+          ..shuffle();
+    return data;
   }
 
   void filterRooms(String type) {
@@ -54,11 +62,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFEFEFE),
       body: SafeArea(
-        child: FutureBuilder<List<RoomModel>>(
-          future: roomsFuture,
+        child: FutureBuilder<HomeData>(
+          future: homeFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
+              return const _HomeSkeleton();
             }
 
             if (snapshot.hasError) {
@@ -66,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 message: snapshot.error.toString(),
                 onRetry: () {
                   setState(() {
-                    roomsFuture = loadRooms();
+                    homeFuture = loadHomeData();
                   });
                 },
               );
@@ -74,13 +82,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
             return RefreshIndicator(
               onRefresh: () async {
-                final loadedRooms = await loadRooms();
+                final data = await loadHomeData();
                 setState(() {
-                  rooms = loadedRooms;
+                  rooms = data.rooms;
                   filteredRooms = homeController.filterRooms(
-                    loadedRooms,
+                    data.rooms,
                     selectedType,
                   );
+                  roomImageUrls =
+                      data.roomImages
+                          .map((image) => image.urls.regular)
+                          .where((url) => url.isNotEmpty)
+                          .toSet()
+                          .toList()
+                        ..shuffle();
                 });
               },
               child: CustomScrollView(
@@ -110,11 +125,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
                               final roomIndex = index ~/ 2;
                               final room = filteredRooms[roomIndex];
+                              final images = roomImageUrls.isEmpty
+                                  ? _fallbackRoomImageUrls
+                                  : roomImageUrls;
+                              final imageUrl = roomIndex < images.length
+                                  ? images[roomIndex]
+                                  : null;
                               return _RoomCard(
                                 room: room,
-                                imageUrl:
-                                    _roomImageUrls[roomIndex %
-                                        _roomImageUrls.length],
+                                imageUrl: imageUrl,
                                 onTap: () => _showRoomDetail(context, room),
                               );
                             }, childCount: filteredRooms.length * 2 - 1),
@@ -279,7 +298,7 @@ class _RoomTypeFilter extends StatelessWidget {
 
 class _RoomCard extends StatelessWidget {
   final RoomModel room;
-  final String imageUrl;
+  final String? imageUrl;
   final VoidCallback onTap;
 
   const _RoomCard({
@@ -307,17 +326,15 @@ class _RoomCard extends StatelessWidget {
               ),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: const Color(0xFFE8EAEC),
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.hotel, size: 40),
-                    );
-                  },
-                ),
+                child: imageUrl == null
+                    ? const _RoomImagePlaceholder()
+                    : Image.network(
+                        imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const _RoomImagePlaceholder();
+                        },
+                      ),
               ),
             ),
             Padding(
@@ -358,6 +375,19 @@ class _RoomCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _RoomImagePlaceholder extends StatelessWidget {
+  const _RoomImagePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFE8EAEC),
+      alignment: Alignment.center,
+      child: const Icon(Icons.hotel, size: 40),
     );
   }
 }
@@ -481,7 +511,153 @@ class _HomeError extends StatelessWidget {
   }
 }
 
-const _roomImageUrls = [
+class _HomeSkeleton extends StatefulWidget {
+  const _HomeSkeleton();
+
+  @override
+  State<_HomeSkeleton> createState() => _HomeSkeletonState();
+}
+
+class _HomeSkeletonState extends State<_HomeSkeleton> {
+  bool faded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(Duration.zero, () {
+      if (mounted) {
+        setState(() {
+          faded = true;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: faded ? 0.45 : 1,
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.easeInOut,
+      onEnd: () {
+        if (mounted) {
+          setState(() {
+            faded = !faded;
+          });
+        }
+      },
+      child: CustomScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
+              child: Row(
+                children: [
+                  const _SkeletonBox(width: 56, height: 56, radius: 28),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        _SkeletonBox(width: 150, height: 20),
+                        SizedBox(height: 8),
+                        _SkeletonBox(width: 220, height: 14),
+                      ],
+                    ),
+                  ),
+                  const _SkeletonBox(width: 40, height: 40, radius: 20),
+                  const SizedBox(width: 8),
+                  const _SkeletonBox(width: 40, height: 40, radius: 20),
+                ],
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 44,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                scrollDirection: Axis.horizontal,
+                itemBuilder: (context, index) {
+                  return const _SkeletonBox(width: 86, height: 36, radius: 18);
+                },
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemCount: 5,
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                if (index.isOdd) return const SizedBox(height: 14);
+                return const _RoomCardSkeleton();
+              }, childCount: 5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoomCardSkeleton extends StatelessWidget {
+  const _RoomCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F6F6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            _SkeletonBox(width: double.infinity, height: 160, radius: 10),
+            SizedBox(height: 14),
+            _SkeletonBox(width: 140, height: 18),
+            SizedBox(height: 10),
+            _SkeletonBox(width: double.infinity, height: 14),
+            SizedBox(height: 8),
+            _SkeletonBox(width: 220, height: 14),
+            SizedBox(height: 14),
+            _SkeletonBox(width: 260, height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SkeletonBox extends StatelessWidget {
+  final double width;
+  final double height;
+  final double radius;
+
+  const _SkeletonBox({
+    required this.width,
+    required this.height,
+    this.radius = 8,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8EAEC),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+}
+
+const _fallbackRoomImageUrls = [
   'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=900&q=80',
   'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=900&q=80',
   'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80',
