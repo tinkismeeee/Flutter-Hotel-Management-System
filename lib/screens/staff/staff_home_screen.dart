@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../utils/app_colors.dart';
-import '../employee/employee_list_screen.dart';
 import '../promotion/promotion_list_screen.dart';
 import '../service/service_list_screen.dart';
 import 'daily_revenue_screen.dart';
+import 'room_info_list_screen.dart';
 
 class StaffHomeScreen extends StatelessWidget {
   const StaffHomeScreen({super.key});
@@ -83,9 +83,9 @@ class StaffHomeScreen extends StatelessWidget {
                 children: [
                   staffButton(
                     context,
-                    title: 'Nhân viên',
-                    icon: Icons.people_alt_rounded,
-                    screen: const EmployeeListScreen(),
+                    title: 'Thông tin phòng',
+                    icon: Icons.bed_rounded,
+                    screen: const RoomInfoListScreen(),
                   ),
                   staffButton(
                     context,

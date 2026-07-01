@@ -7,7 +7,7 @@ void main() {
     await tester.pumpWidget(const HotelStaffApp());
 
     expect(find.text('KHU VỰC STAFF'), findsOneWidget);
-    expect(find.text('Nhân viên'), findsOneWidget);
+    expect(find.text('Thông tin phòng'), findsOneWidget);
     expect(find.text('Dịch vụ'), findsOneWidget);
     expect(find.text('Mã giảm giá'), findsOneWidget);
     expect(find.text('Doanh thu ngày'), findsOneWidget);
