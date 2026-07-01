@@ -42,7 +42,8 @@ class UserModel {
       userId: json['user_id']?.toString() ?? '',
       username: json['username']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
-      password: json['password_hash']?.toString() ?? '',
+      password:
+          (json['password'] ?? json['password_hash'])?.toString() ?? '',
       firstName: json['first_name']?.toString() ?? '',
       lastName: json['last_name']?.toString() ?? '',
       phone: json['phone_number']?.toString() ?? '',
@@ -59,14 +60,12 @@ class UserModel {
       'user_id': userId,
       'username': username,
       'email': email,
-      'password_hash': password,
+      'password': password,
       'first_name': firstName,
       'last_name': lastName,
       'phone_number': phone,
       'address': address,
       'date_of_birth': dateOfBirth,
-      'id_card_front_image_url': idCardFont,
-      'id_card_back_image_url': idCardBack,
       'is_active': isActive,
     };
   }
@@ -79,6 +78,7 @@ class UserModel {
       final usersJson = switch (jsonData) {
         List<dynamic> data => data,
         {'data': List<dynamic> data} => data,
+        Map<String, dynamic> data => [data],
         _ => throw Exception('Invalid customer response'),
       };
 

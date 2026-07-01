@@ -1,73 +1,63 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/colors.dart';
+
 import '../../../core/models/user_model.dart';
-import '../../signup/view/signup_screen.dart';
-import '../controller/login_controller.dart';
+import '../../../core/theme/colors.dart';
+import '../controller/signup_controller.dart';
 
-class LoginPage extends StatefulWidget {
-  final ValueChanged<UserModel>? onLoggedIn;
+class SignupPage extends StatefulWidget {
+  final ValueChanged<UserModel>? onRegistered;
 
-  const LoginPage({super.key, this.onLoggedIn});
+  const SignupPage({super.key, this.onRegistered});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<SignupPage> createState() => _SignupPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-  final LoginController loginController = LoginController();
-
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-
-  bool isPasswordHidden = true;
-  bool isLoading = false;
-  bool rememberPassword = false;
-  String? loginError;
+class _SignupPageState extends State<SignupPage> {
+  final formKey = GlobalKey<FormState>();
+  final signupController = SignupController();
+  final fullNameController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
   bool showErrors = false;
+  bool isLoading = false;
+  bool isPasswordHidden = true;
+  String? signupError;
 
   @override
   void dispose() {
+    fullNameController.dispose();
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> handleLogin() async {
+  Future<void> handleSignup() async {
     setState(() {
       showErrors = true;
-      loginError = null;
+      signupError = null;
     });
 
-    final isValid = formKey.currentState!.validate();
-
-    if (!isValid) {
-      return;
-    }
-
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
-
-    debugPrint('Email: $email');
-    debugPrint('Password: $password');
+    if (!formKey.currentState!.validate()) return;
 
     setState(() {
       isLoading = true;
     });
 
     try {
-      final user = await loginController.login(
-        email: email,
-        password: password,
-        rememberPassword: rememberPassword,
+      final user = await signupController.signup(
+        fullName: fullNameController.text.trim(),
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
       );
-      widget.onLoggedIn?.call(user);
-      debugPrint('Login successful for user: ${user.username}');
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      widget.onRegistered?.call(user);
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        loginError = 'Invalid email or password';
+        signupError = error.toString().replaceFirst('Exception: ', '');
       });
     } finally {
       if (mounted) {
@@ -78,48 +68,37 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void hideErrorsWhenUnfocus() {
-    FocusScope.of(context).unfocus();
-
-    setState(() {
-      showErrors = false;
-    });
-
-    formKey.currentState?.validate();
+  String? validateFullName(String? value) {
+    if (!showErrors) return null;
+    if ((value ?? '').trim().isEmpty) return 'Please enter your full name';
+    return null;
   }
 
   String? validateEmail(String? value) {
-    if (!showErrors) {
-      return null;
+    if (!showErrors) return null;
+    final email = (value ?? '').trim();
+    if (email.isEmpty) return 'Please enter your email';
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email)) {
+      return 'Please enter a valid email';
     }
-
-    final email = value?.trim() ?? '';
-
-    if (email.isEmpty) {
-      return 'Please enter your email address';
-    }
-
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,}$');
-
-    if (!emailRegex.hasMatch(email)) {
-      return 'Please enter a valid email address';
-    }
-
     return null;
   }
 
   String? validatePassword(String? value) {
-    if (!showErrors) {
-      return null;
+    if (!showErrors) return null;
+    if ((value ?? '').trim().isEmpty) return 'Please enter your password';
+    if ((value ?? '').trim().length < 6) {
+      return 'Password must be at least 6 characters';
     }
-
-    final password = value?.trim() ?? '';
-
-    if (password.isEmpty) {
-      return 'Please enter your password';
-    }
-
     return null;
+  }
+
+  void hideErrorsWhenUnfocus() {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      showErrors = false;
+    });
+    formKey.currentState?.validate();
   }
 
   @override
@@ -134,49 +113,58 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 80),
-
+                const SizedBox(height: 28),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                const SizedBox(height: 36),
                 const Center(
                   child: Text(
-                    "Let's sign you in",
+                    'Create Account',
                     style: TextStyle(
                       color: Color(0xFF171725),
-                      fontSize: 32,
+                      fontSize: 24,
+                      fontFamily: 'Jost',
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'Cambria',
+                      height: 1.33,
+                      letterSpacing: 0.12,
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 8),
-
                 const Center(
                   child: Text(
-                    "Welcome back! Please login to continue.",
-                    textAlign: TextAlign.center,
+                    'Create your account to continue',
                     style: TextStyle(
-                      color: CustomColors.loginSmallText,
+                      color: Color(0xFF434E58),
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'Cambria',
+                      fontFamily: 'Jost',
+                      fontWeight: FontWeight.w400,
+                      height: 1.57,
+                      letterSpacing: 0.07,
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 40),
-
-                CustomInputField(
-                  label: 'Email address',
-                  hintText: 'Enter your email address',
+                _SignupInputField(
+                  label: 'Full Name',
+                  hintText: 'Enter your name',
+                  controller: fullNameController,
+                  validator: validateFullName,
+                  onTapOutside: hideErrorsWhenUnfocus,
+                ),
+                const SizedBox(height: 16),
+                _SignupInputField(
+                  label: 'E-mail',
+                  hintText: 'Enter your email',
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
                   validator: validateEmail,
                   onTapOutside: hideErrorsWhenUnfocus,
                 ),
-
                 const SizedBox(height: 16),
-
-                CustomInputField(
+                _SignupInputField(
                   label: 'Password',
                   hintText: 'Enter your password',
                   controller: passwordController,
@@ -197,11 +185,10 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-
-                if (loginError != null) ...[
+                if (signupError != null) ...[
                   const SizedBox(height: 10),
                   Text(
-                    loginError!,
+                    signupError!,
                     style: const TextStyle(
                       color: Colors.red,
                       fontSize: 13,
@@ -210,65 +197,12 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ],
-
-                const SizedBox(height: 12),
-
-                Row(
-                  children: [
-                    Radio<bool>(
-                      value: true,
-                      groupValue: rememberPassword,
-                      toggleable: true,
-                      onChanged: (value) {
-                        setState(() {
-                          rememberPassword = value ?? false;
-                        });
-                      },
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          rememberPassword = !rememberPassword;
-                        });
-                      },
-                      child: const Text(
-                        'Remember me',
-                        style: TextStyle(
-                          color: CustomColors.loginText,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Jost',
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () {},
-                      style: ButtonStyle(
-                        overlayColor: WidgetStateProperty.all(
-                          Colors.transparent,
-                        ),
-                      ),
-                      child: const Text(
-                        'Forgot Password?',
-                        style: TextStyle(
-                          color: CustomColors.forgotPasswordText,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Jost',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
+                const SizedBox(height: 36),
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: isLoading ? null : handleLogin,
+                    onPressed: isLoading ? null : handleSignup,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: CustomColors.buttonBackground,
                       foregroundColor: CustomColors.buttonText,
@@ -284,23 +218,24 @@ class _LoginPageState extends State<LoginPage> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Text(
-                            'Login',
+                            'Create An Account',
                             style: TextStyle(
+                              color: Color(0xFFFEFEFE),
                               fontSize: 16,
+                              fontFamily: 'Plus Jakarta Sans',
                               fontWeight: FontWeight.w600,
-                              fontFamily: 'Jost',
+                              height: 1.50,
+                              letterSpacing: 0.08,
                             ),
                           ),
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
-                      "Don't have an account?",
+                      'Already have an account?',
                       style: TextStyle(
                         color: CustomColors.signUpFieldText,
                         fontSize: 16,
@@ -309,21 +244,14 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                SignupPage(onRegistered: widget.onLoggedIn),
-                          ),
-                        );
-                      },
+                      onPressed: () => Navigator.of(context).pop(),
                       style: ButtonStyle(
                         overlayColor: WidgetStateProperty.all(
                           Colors.transparent,
                         ),
                       ),
                       child: const Text(
-                        'Sign Up',
+                        'Sign In',
                         style: TextStyle(
                           color: CustomColors.buttonBackground,
                           fontSize: 16,
@@ -334,55 +262,6 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 5),
-
-                Row(
-                  children: const [
-                    Expanded(
-                      child: Divider(color: Color(0xFFE5E5E5), thickness: 1),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'Or Sign In with',
-                        style: TextStyle(
-                          color: CustomColors.loginHintText,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'Jost',
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Divider(color: Color(0xFFE5E5E5), thickness: 1),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 10),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        debugPrint('Google login');
-                      },
-                      child: Container(
-                        height: 72,
-                        width: 72,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF7F7F7),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: Image.asset('assets/imgs/google_img.png'),
-                      ),
-                    ),
-                  ],
-                ),
-
                 const SizedBox(height: 24),
               ],
             ),
@@ -393,7 +272,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-class CustomInputField extends StatelessWidget {
+class _SignupInputField extends StatelessWidget {
   final String label;
   final String hintText;
   final TextEditingController controller;
@@ -403,8 +282,7 @@ class CustomInputField extends StatelessWidget {
   final String? Function(String?)? validator;
   final VoidCallback? onTapOutside;
 
-  const CustomInputField({
-    super.key,
+  const _SignupInputField({
     required this.label,
     required this.hintText,
     required this.controller,
@@ -423,7 +301,7 @@ class CustomInputField extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            color: CustomColors.loginText,
+            color: Color(0xFF171725),
             fontSize: 14,
             fontFamily: 'Jost',
             fontWeight: FontWeight.w600,
@@ -431,19 +309,15 @@ class CustomInputField extends StatelessWidget {
             letterSpacing: 0.07,
           ),
         ),
-
         const SizedBox(height: 8),
-
         TextFormField(
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
-          onTapOutside: (event) {
-            onTapOutside?.call();
-          },
+          onTapOutside: (event) => onTapOutside?.call(),
           style: const TextStyle(
-            color: CustomColors.loginText,
+            color: Color(0xFF171725),
             fontSize: 14,
             fontFamily: 'Jost',
             fontWeight: FontWeight.w600,
@@ -451,7 +325,7 @@ class CustomInputField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: const TextStyle(
-              color: CustomColors.loginHintText,
+              color: Color(0xFF9CA4AB),
               fontSize: 14,
               fontFamily: 'Jost',
               fontWeight: FontWeight.w600,
@@ -465,32 +339,26 @@ class CustomInputField extends StatelessWidget {
               vertical: 16,
             ),
             suffixIcon: suffixIcon,
-
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF171725), width: 1),
             ),
-
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.red, width: 1),
             ),
-
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.red, width: 1),
             ),
-
             errorStyle: const TextStyle(
               color: Colors.red,
               fontSize: 12,
