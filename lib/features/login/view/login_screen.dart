@@ -312,8 +312,7 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) =>
-                                SignupPage(onRegistered: widget.onLoggedIn),
+                            builder: (context) => const SignupPage(),
                           ),
                         );
                       },

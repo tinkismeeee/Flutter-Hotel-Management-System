@@ -7,9 +7,14 @@ import '../../../core/models/user_model.dart';
 
 class SignupController {
   Future<UserModel> signup({
-    required String fullName,
+    required String username,
     required String email,
     required String password,
+    required String firstName,
+    required String lastName,
+    required String phone,
+    required String address,
+    required String dateOfBirth,
   }) async {
     final normalizedEmail = email.toLowerCase();
     final existingUsers = await UserModel.fetchAllUsers();
@@ -18,25 +23,22 @@ class SignupController {
     )) {
       throw Exception('Email already exists');
     }
-
-    final names = fullName.trim().split(RegExp(r'\s+'));
-    final firstName = names.first;
-    final lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
-    final username =
-        '${normalizedEmail.split('@').first}${DateTime.now().millisecondsSinceEpoch}';
+    if (existingUsers.any((user) => user.username == username)) {
+      throw Exception('Username already exists');
+    }
 
     final response = await http.post(
       Uri.parse(ApiEndpoints.customer),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
-        'username': username,
+        'username': username.trim(),
         'email': normalizedEmail,
         'password': password,
-        'first_name': firstName,
-        'last_name': lastName,
-        'phone_number': '',
-        'address': '',
-        'date_of_birth': '2000-01-01',
+        'first_name': firstName.trim(),
+        'last_name': lastName.trim(),
+        'phone_number': phone.trim(),
+        'address': address.trim(),
+        'date_of_birth': dateOfBirth.trim(),
         'is_active': true,
       }),
     );

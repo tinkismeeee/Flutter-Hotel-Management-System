@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/models/user_model.dart';
 import '../../../core/theme/colors.dart';
 import '../controller/signup_controller.dart';
 
 class SignupPage extends StatefulWidget {
-  final ValueChanged<UserModel>? onRegistered;
-
-  const SignupPage({super.key, this.onRegistered});
+  const SignupPage({super.key});
 
   @override
   State<SignupPage> createState() => _SignupPageState();
@@ -16,9 +13,15 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   final formKey = GlobalKey<FormState>();
   final signupController = SignupController();
-  final fullNameController = TextEditingController();
+  final usernameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
+  final firstNameController = TextEditingController();
+  final lastNameController = TextEditingController();
+  final phoneController = TextEditingController();
+  final addressController = TextEditingController();
+  final dateOfBirthController = TextEditingController();
 
   bool showErrors = false;
   bool isLoading = false;
@@ -27,9 +30,15 @@ class _SignupPageState extends State<SignupPage> {
 
   @override
   void dispose() {
-    fullNameController.dispose();
+    usernameController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
+    firstNameController.dispose();
+    lastNameController.dispose();
+    phoneController.dispose();
+    addressController.dispose();
+    dateOfBirthController.dispose();
     super.dispose();
   }
 
@@ -46,14 +55,22 @@ class _SignupPageState extends State<SignupPage> {
     });
 
     try {
-      final user = await signupController.signup(
-        fullName: fullNameController.text.trim(),
+      await signupController.signup(
+        username: usernameController.text.trim(),
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
+        firstName: firstNameController.text.trim(),
+        lastName: lastNameController.text.trim(),
+        phone: phoneController.text.trim(),
+        address: addressController.text.trim(),
+        dateOfBirth: dateOfBirthController.text.trim(),
       );
       if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
-      widget.onRegistered?.call(user);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Account created. Please sign in.')),
+      );
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -68,9 +85,9 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
-  String? validateFullName(String? value) {
+  String? validateRequired(String? value, String fieldName) {
     if (!showErrors) return null;
-    if ((value ?? '').trim().isEmpty) return 'Please enter your full name';
+    if ((value ?? '').trim().isEmpty) return 'Please enter your $fieldName';
     return null;
   }
 
@@ -89,6 +106,26 @@ class _SignupPageState extends State<SignupPage> {
     if ((value ?? '').trim().isEmpty) return 'Please enter your password';
     if ((value ?? '').trim().length < 6) {
       return 'Password must be at least 6 characters';
+    }
+    return null;
+  }
+
+  String? validateConfirmPassword(String? value) {
+    if (!showErrors) return null;
+    final confirmPassword = (value ?? '').trim();
+    if (confirmPassword.isEmpty) return 'Please confirm your password';
+    if (confirmPassword != passwordController.text.trim()) {
+      return 'Passwords do not match';
+    }
+    return null;
+  }
+
+  String? validateDateOfBirth(String? value) {
+    if (!showErrors) return null;
+    final dateOfBirth = (value ?? '').trim();
+    if (dateOfBirth.isEmpty) return 'Please enter your date of birth';
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(dateOfBirth)) {
+      return 'Please use YYYY-MM-DD';
     }
     return null;
   }
@@ -148,10 +185,10 @@ class _SignupPageState extends State<SignupPage> {
                 ),
                 const SizedBox(height: 40),
                 _SignupInputField(
-                  label: 'Full Name',
-                  hintText: 'Enter your name',
-                  controller: fullNameController,
-                  validator: validateFullName,
+                  label: 'Username',
+                  hintText: 'Enter your username',
+                  controller: usernameController,
+                  validator: (value) => validateRequired(value, 'username'),
                   onTapOutside: hideErrorsWhenUnfocus,
                 ),
                 const SizedBox(height: 16),
@@ -184,6 +221,57 @@ class _SignupPageState extends State<SignupPage> {
                       color: const Color(0xFF9CA4AB),
                     ),
                   ),
+                ),
+                const SizedBox(height: 16),
+                _SignupInputField(
+                  label: 'Confirm Password',
+                  hintText: 'Enter your password again',
+                  controller: confirmPasswordController,
+                  obscureText: isPasswordHidden,
+                  validator: validateConfirmPassword,
+                  onTapOutside: hideErrorsWhenUnfocus,
+                ),
+                const SizedBox(height: 16),
+                _SignupInputField(
+                  label: 'First Name',
+                  hintText: 'Enter your first name',
+                  controller: firstNameController,
+                  validator: (value) => validateRequired(value, 'first name'),
+                  onTapOutside: hideErrorsWhenUnfocus,
+                ),
+                const SizedBox(height: 16),
+                _SignupInputField(
+                  label: 'Last Name',
+                  hintText: 'Enter your last name',
+                  controller: lastNameController,
+                  validator: (value) => validateRequired(value, 'last name'),
+                  onTapOutside: hideErrorsWhenUnfocus,
+                ),
+                const SizedBox(height: 16),
+                _SignupInputField(
+                  label: 'Phone Number',
+                  hintText: 'Enter your phone number',
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  validator: (value) => validateRequired(value, 'phone number'),
+                  onTapOutside: hideErrorsWhenUnfocus,
+                ),
+                const SizedBox(height: 16),
+                _SignupInputField(
+                  label: 'Address',
+                  hintText: 'Enter your address',
+                  controller: addressController,
+                  validator: (value) => validateRequired(value, 'address'),
+                  onTapOutside: hideErrorsWhenUnfocus,
+                ),
+                const SizedBox(height: 16),
+                _SignupInputField(
+                  label: 'Date of Birth',
+                  hintText: 'YYYY-MM-DD',
+                  controller: dateOfBirthController,
+                  keyboardType: TextInputType.datetime,
+                  validator: validateDateOfBirth,
+                  onTapOutside: hideErrorsWhenUnfocus,
                 ),
                 if (signupError != null) ...[
                   const SizedBox(height: 10),
