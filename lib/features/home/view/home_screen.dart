@@ -139,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (context) => DetailRoomScreen(
-                                        room: room,
+                                        roomId: room.roomId,
                                         imageUrl: imageUrl,
                                       ),
                                     ),

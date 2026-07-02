@@ -1,12 +1,48 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import '../../../core/const/api_endpoints.dart';
 import '../../../core/models/room_model.dart';
 
-class DetailRoomScreen extends StatelessWidget {
-  final RoomModel room;
+class DetailRoomScreen extends StatefulWidget {
+  final int roomId;
   final String? imageUrl;
 
-  const DetailRoomScreen({super.key, required this.room, this.imageUrl});
+  const DetailRoomScreen({super.key, required this.roomId, this.imageUrl});
+
+  @override
+  State<DetailRoomScreen> createState() => _DetailRoomScreenState();
+}
+
+class _DetailRoomScreenState extends State<DetailRoomScreen> {
+  late Future<RoomModel> roomFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    roomFuture = fetchRoomDetail();
+  }
+
+  Future<RoomModel> fetchRoomDetail() async {
+    final response = await http.get(
+      Uri.parse('${ApiEndpoints.room}/${widget.roomId}'),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch room: ${response.statusCode}');
+    }
+
+    final jsonData = json.decode(response.body);
+    final roomJson = switch (jsonData) {
+      {'data': Map<String, dynamic> data} => data,
+      Map<String, dynamic> data => data,
+      _ => throw Exception('Invalid room detail response'),
+    };
+
+    return RoomModel.fromJson(roomJson);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,122 +52,179 @@ class DetailRoomScreen extends StatelessWidget {
         backgroundColor: const Color(0xFFFEFEFE),
         foregroundColor: const Color(0xFF171725),
         elevation: 0,
-        title: Text(
-          'Room ${room.roomNumber}',
-          style: const TextStyle(
-            fontFamily: 'Jost',
-            fontWeight: FontWeight.w700,
-          ),
+        title: const Text(
+          'Room details',
+          style: TextStyle(fontFamily: 'Jost', fontWeight: FontWeight.w700),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: imageUrl == null
-                    ? const _RoomImagePlaceholder()
-                    : Image.network(
-                        imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const _RoomImagePlaceholder();
-                        },
-                      ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Room ${room.roomNumber}',
-                    style: const TextStyle(
-                      color: Color(0xFF171725),
-                      fontSize: 24,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w700,
+      body: FutureBuilder<RoomModel>(
+        future: roomFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return _DetailError(
+              message: snapshot.error.toString(),
+              onRetry: () {
+                setState(() {
+                  roomFuture = fetchRoomDetail();
+                });
+              },
+            );
+          }
+
+          return _DetailBody(room: snapshot.data!, imageUrl: widget.imageUrl);
+        },
+      ),
+    );
+  }
+}
+
+class _DetailBody extends StatelessWidget {
+  final RoomModel room;
+  final String? imageUrl;
+
+  const _DetailBody({required this.room, required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: imageUrl == null
+                  ? const _RoomImagePlaceholder()
+                  : Image.network(
+                      imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const _RoomImagePlaceholder();
+                      },
                     ),
-                  ),
-                ),
-                _StatusBadge(status: room.status),
-              ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              room.roomTypeName,
-              style: const TextStyle(
-                color: Color(0xFF78828A),
-                fontSize: 15,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              '${_formatPrice(room.pricePerNight)} VND/night',
-              style: const TextStyle(
-                color: Color(0xFF2852AF),
-                fontSize: 22,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 20),
-            _RoomFacts(room: room),
-            const SizedBox(height: 28),
-            const Text(
-              'Description',
-              style: TextStyle(
-                color: Color(0xFF171725),
-                fontSize: 18,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              room.description.isEmpty
-                  ? 'No description available.'
-                  : room.description,
-              style: const TextStyle(
-                color: Color(0xFF434E58),
-                fontSize: 14,
-                height: 1.5,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 28),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: room.status == 'available' ? () {} : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2852AF),
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: const Color(0xFFE8EAEC),
-                  disabledForegroundColor: const Color(0xFF78828A),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Book Now',
-                  style: TextStyle(
-                    fontSize: 16,
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Room ${room.roomNumber}',
+                  style: const TextStyle(
+                    color: Color(0xFF171725),
+                    fontSize: 24,
                     fontFamily: 'Jost',
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
+              _StatusBadge(status: room.status),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            room.roomTypeName,
+            style: const TextStyle(
+              color: Color(0xFF78828A),
+              fontSize: 15,
+              fontFamily: 'Jost',
+              fontWeight: FontWeight.w500,
             ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            '${_formatPrice(room.pricePerNight)} VND/night',
+            style: const TextStyle(
+              color: Color(0xFF2852AF),
+              fontSize: 22,
+              fontFamily: 'Jost',
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 20),
+          _RoomFacts(room: room),
+          const SizedBox(height: 28),
+          const Text(
+            'Description',
+            style: TextStyle(
+              color: Color(0xFF171725),
+              fontSize: 18,
+              fontFamily: 'Jost',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            room.description.isEmpty
+                ? 'No description available.'
+                : room.description,
+            style: const TextStyle(
+              color: Color(0xFF434E58),
+              fontSize: 14,
+              height: 1.5,
+              fontFamily: 'Jost',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: room.status == 'available' ? () {} : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2852AF),
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(0xFFE8EAEC),
+                disabledForegroundColor: const Color(0xFF78828A),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Book Now',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontFamily: 'Jost',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _DetailError({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ),
       ),
