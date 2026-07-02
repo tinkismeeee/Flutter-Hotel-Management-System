@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/models/user_model.dart';
+import '../../detail_rooms/view/detail_room_screen.dart';
 import '../controller/home_controller.dart';
 import '../../../core/models/room_model.dart';
 
@@ -134,7 +135,16 @@ class _HomeScreenState extends State<HomeScreen> {
                               return _RoomCard(
                                 room: room,
                                 imageUrl: imageUrl,
-                                onTap: () => _showRoomDetail(context, room),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => DetailRoomScreen(
+                                        room: room,
+                                        imageUrl: imageUrl,
+                                      ),
+                                    ),
+                                  );
+                                },
                               );
                             }, childCount: filteredRooms.length * 2 - 1),
                           ),
@@ -145,37 +155,6 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ),
-    );
-  }
-
-  void _showRoomDetail(BuildContext context, RoomModel room) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Room ${room.roomNumber}',
-                style: const TextStyle(
-                  color: Color(0xFF171725),
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Jost',
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(room.description),
-              const SizedBox(height: 14),
-              _RoomFacts(room: room),
-            ],
-          ),
-        );
-      },
     );
   }
 }
