@@ -112,10 +112,6 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
   }
 
   Widget dateSelector(DailyRevenueReport report) {
-    final sourceLabel = report.source == RevenueReportSource.reportApi
-        ? 'API báo cáo'
-        : 'Tính từ hóa đơn';
-
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -147,14 +143,6 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
                     color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  sourceLabel,
-                  style: const TextStyle(
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
