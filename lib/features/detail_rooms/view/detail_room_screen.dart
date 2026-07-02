@@ -5,12 +5,20 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/const/api_endpoints.dart';
 import '../../../core/models/room_model.dart';
+import '../../../core/models/user_model.dart';
+import '../../payment/view/payment_qr_screen.dart';
 
 class DetailRoomScreen extends StatefulWidget {
   final int roomId;
   final String? imageUrl;
+  final UserModel user;
 
-  const DetailRoomScreen({super.key, required this.roomId, this.imageUrl});
+  const DetailRoomScreen({
+    super.key,
+    required this.roomId,
+    required this.user,
+    this.imageUrl,
+  });
 
   @override
   State<DetailRoomScreen> createState() => _DetailRoomScreenState();
@@ -75,7 +83,11 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
             );
           }
 
-          return _DetailBody(room: snapshot.data!, imageUrl: widget.imageUrl);
+          return _DetailBody(
+            room: snapshot.data!,
+            imageUrl: widget.imageUrl,
+            user: widget.user,
+          );
         },
       ),
     );
@@ -85,8 +97,13 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
 class _DetailBody extends StatelessWidget {
   final RoomModel room;
   final String? imageUrl;
+  final UserModel user;
 
-  const _DetailBody({required this.room, required this.imageUrl});
+  const _DetailBody({
+    required this.room,
+    required this.imageUrl,
+    required this.user,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +194,16 @@ class _DetailBody extends StatelessWidget {
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: room.status == 'available' ? () {} : null,
+              onPressed: room.status == 'available'
+                  ? () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              PaymentQrScreen(room: room, user: user),
+                        ),
+                      );
+                    }
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2852AF),
                 foregroundColor: Colors.white,
