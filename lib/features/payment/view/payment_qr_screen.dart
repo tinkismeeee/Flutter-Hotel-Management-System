@@ -8,22 +8,28 @@ class PaymentQrScreen extends StatelessWidget {
   static const qrUrl = 'https://img.vietqr.io/image/TCB-2707200505-compact.png';
 
   final RoomModel room;
+  final String? roomTypeName;
   final UserModel user;
   final List<BookingServiceModel> services;
   final DateTimeRange? stayRange;
   final int nights;
   final int guests;
   final double? totalPrice;
+  final String? discountCode;
+  final double discountAmount;
 
   const PaymentQrScreen({
     super.key,
     required this.room,
+    this.roomTypeName,
     required this.user,
     this.services = const [],
     this.stayRange,
     this.nights = 1,
     this.guests = 1,
     this.totalPrice,
+    this.discountCode,
+    this.discountAmount = 0,
   });
 
   @override
@@ -69,7 +75,7 @@ class PaymentQrScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    room.roomTypeName,
+                    roomTypeName ?? room.roomTypeName,
                     style: const TextStyle(
                       color: Color(0xFF78828A),
                       fontSize: 14,
@@ -102,6 +108,10 @@ class PaymentQrScreen extends StatelessWidget {
                     ...services.map(
                       (service) => _SelectedServiceLine(service: service),
                     ),
+                  ],
+                  if (discountAmount > 0 && discountCode != null) ...[
+                    const SizedBox(height: 10),
+                    _DiscountLine(code: discountCode!, amount: discountAmount),
                   ],
                 ],
               ),
@@ -285,6 +295,39 @@ class _GuestLine extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DiscountLine extends StatelessWidget {
+  final String code;
+  final double amount;
+
+  const _DiscountLine({required this.code, required this.amount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Discount ($code)',
+            style: const TextStyle(
+              color: Color(0xFF1A9C5B),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Text(
+          '-${_formatNumber(amount)} VND',
+          style: const TextStyle(
+            color: Color(0xFF1A9C5B),
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
     );
   }
 }

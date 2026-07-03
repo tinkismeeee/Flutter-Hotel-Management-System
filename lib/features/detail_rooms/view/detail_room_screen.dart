@@ -9,7 +9,7 @@ import '../../../core/models/booking_service_model.dart';
 import '../../../core/models/room_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/theme/colors.dart';
-import '../../payment/view/payment_qr_screen.dart';
+import '../../payment/view/payment_confirmation_screen.dart';
 
 class DetailRoomScreen extends StatefulWidget {
   final int roomId;
@@ -200,7 +200,10 @@ class _DetailBodyState extends State<_DetailBody> {
 
   int get nights => stayRange?.duration.inDays ?? 1;
   int get guestCount => int.tryParse(guestController.text.trim()) ?? 0;
-  bool get canBook => widget.room.status == 'available' && guestError == null;
+  bool get canBook =>
+      widget.room.status == 'available' &&
+      stayRange != null &&
+      guestError == null;
 
   double get totalPrice {
     final serviceTotal = widget.services
@@ -305,8 +308,9 @@ class _DetailBodyState extends State<_DetailBody> {
                   ? () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => PaymentQrScreen(
+                          builder: (context) => PaymentConfirmationScreen(
                             room: widget.room,
+                            roomTypeName: widget.roomTypeName,
                             user: widget.user,
                             services: chosenServices,
                             stayRange: stayRange,
@@ -322,6 +326,17 @@ class _DetailBodyState extends State<_DetailBody> {
               label: const Text('Book Now'),
             ),
           ),
+          if (widget.room.status == 'available' && stayRange == null) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Please choose check-in and check-out dates before booking',
+              style: TextStyle(
+                color: AppColors.danger,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ],
       ),
     );
