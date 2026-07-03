@@ -10,6 +10,9 @@ class PaymentQrScreen extends StatelessWidget {
   final RoomModel room;
   final UserModel user;
   final List<BookingServiceModel> services;
+  final DateTimeRange? stayRange;
+  final int nights;
+  final int guests;
   final double? totalPrice;
 
   const PaymentQrScreen({
@@ -17,6 +20,9 @@ class PaymentQrScreen extends StatelessWidget {
     required this.room,
     required this.user,
     this.services = const [],
+    this.stayRange,
+    this.nights = 1,
+    this.guests = 1,
     this.totalPrice,
   });
 
@@ -71,6 +77,16 @@ class PaymentQrScreen extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  if (stayRange != null) ...[
+                    const SizedBox(height: 10),
+                    _StayLine(
+                      checkIn: _formatDate(stayRange!.start),
+                      checkOut: _formatDate(stayRange!.end),
+                      nights: nights,
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  _GuestLine(guests: guests),
                   const SizedBox(height: 14),
                   Text(
                     '${_formatNumber(amount)} VND',
@@ -195,6 +211,84 @@ class _PaymentInfo extends StatelessWidget {
   }
 }
 
+class _StayLine extends StatelessWidget {
+  final String checkIn;
+  final String checkOut;
+  final int nights;
+
+  const _StayLine({
+    required this.checkIn,
+    required this.checkOut,
+    required this.nights,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$checkIn - $checkOut',
+            style: const TextStyle(
+              color: Color(0xFF171725),
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$nights night${nights > 1 ? 's' : ''}',
+            style: const TextStyle(
+              color: Color(0xFF78828A),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuestLine extends StatelessWidget {
+  final int guests;
+
+  const _GuestLine({required this.guests});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.people_outline, size: 18, color: Color(0xFF78828A)),
+          const SizedBox(width: 8),
+          Text(
+            '$guests guest${guests > 1 ? 's' : ''}',
+            style: const TextStyle(
+              color: Color(0xFF171725),
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _QrPlaceholder extends StatelessWidget {
   const _QrPlaceholder();
 
@@ -221,6 +315,10 @@ String _formatNumber(double number) {
 }
 
 double _parsePrice(String value) => double.tryParse(value) ?? 0;
+
+String _formatDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
 
 class _SelectedServiceLine extends StatelessWidget {
   final BookingServiceModel service;

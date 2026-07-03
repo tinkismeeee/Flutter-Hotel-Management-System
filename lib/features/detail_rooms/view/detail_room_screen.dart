@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/const/api_endpoints.dart';
@@ -193,19 +194,32 @@ class _DetailBody extends StatefulWidget {
 
 class _DetailBodyState extends State<_DetailBody> {
   final selectedServices = <int>{};
+  final guestController = TextEditingController(text: '1');
+  DateTimeRange? stayRange;
+  String? guestError;
+
+  int get nights => stayRange?.duration.inDays ?? 1;
+  int get guestCount => int.tryParse(guestController.text.trim()) ?? 0;
+  bool get canBook => widget.room.status == 'available' && guestError == null;
 
   double get totalPrice {
     final serviceTotal = widget.services
         .where((service) => selectedServices.contains(service.serviceId))
         .fold<double>(0, (sum, service) => sum + _parsePrice(service.price));
 
-    return _parsePrice(widget.room.pricePerNight) + serviceTotal;
+    return (_parsePrice(widget.room.pricePerNight) * nights) + serviceTotal;
   }
 
   List<BookingServiceModel> get chosenServices {
     return widget.services
         .where((service) => selectedServices.contains(service.serviceId))
         .toList();
+  }
+
+  @override
+  void dispose() {
+    guestController.dispose();
+    super.dispose();
   }
 
   @override
@@ -222,6 +236,19 @@ class _DetailBodyState extends State<_DetailBody> {
           ),
           const SizedBox(height: 18),
           _RoomFacts(room: widget.room, roomTypeName: widget.roomTypeName),
+          const SizedBox(height: 24),
+          _StayPicker(
+            stayRange: stayRange,
+            nights: nights,
+            onTap: pickStayRange,
+          ),
+          const SizedBox(height: 16),
+          _GuestInput(
+            controller: guestController,
+            maxGuests: widget.room.maxGuests,
+            errorText: guestError,
+            onChanged: validateGuests,
+          ),
           const SizedBox(height: 24),
           _SectionTitle(
             title: 'Description',
@@ -265,6 +292,7 @@ class _DetailBodyState extends State<_DetailBody> {
           const SizedBox(height: 12),
           _TotalBox(
             roomPrice: widget.room.pricePerNight,
+            nights: nights,
             serviceCount: selectedServices.length,
             totalPrice: totalPrice,
           ),
@@ -273,7 +301,7 @@ class _DetailBodyState extends State<_DetailBody> {
             width: double.infinity,
             height: 54,
             child: ElevatedButton.icon(
-              onPressed: widget.room.status == 'available'
+              onPressed: canBook
                   ? () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
@@ -281,6 +309,9 @@ class _DetailBodyState extends State<_DetailBody> {
                             room: widget.room,
                             user: widget.user,
                             services: chosenServices,
+                            stayRange: stayRange,
+                            nights: nights,
+                            guests: guestCount,
                             totalPrice: totalPrice,
                           ),
                         ),
@@ -289,6 +320,201 @@ class _DetailBodyState extends State<_DetailBody> {
                   : null,
               icon: const Icon(Icons.calendar_month_outlined),
               label: const Text('Book Now'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> pickStayRange() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: today,
+      lastDate: DateTime(today.year + 1, today.month, today.day),
+      initialDateRange:
+          stayRange ??
+          DateTimeRange(start: today, end: today.add(const Duration(days: 1))),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppColors.primary),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (range == null || range.duration.inDays < 1) return;
+    setState(() => stayRange = range);
+  }
+
+  void validateGuests(String value) {
+    final guests = int.tryParse(value.trim()) ?? 0;
+    setState(() {
+      if (guests < 1) {
+        guestError = 'Please enter at least 1 guest';
+      } else if (guests > widget.room.maxGuests) {
+        guestError = 'This room allows maximum ${widget.room.maxGuests} guests';
+      } else {
+        guestError = null;
+      }
+    });
+  }
+}
+
+class _GuestInput extends StatelessWidget {
+  final TextEditingController controller;
+  final int maxGuests;
+  final String? errorText;
+  final ValueChanged<String> onChanged;
+
+  const _GuestInput({
+    required this.controller,
+    required this.maxGuests,
+    required this.errorText,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: 'Guests',
+        hintText: 'Enter number of guests',
+        errorText: errorText,
+        prefixIcon: const Icon(Icons.people_outline),
+        suffixText: 'Max $maxGuests',
+      ),
+    );
+  }
+}
+
+class _StayPicker extends StatelessWidget {
+  final DateTimeRange? stayRange;
+  final int nights;
+  final VoidCallback onTap;
+
+  const _StayPicker({
+    required this.stayRange,
+    required this.nights,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.calendar_today_outlined, color: AppColors.primary),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Stay dates',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                Icon(Icons.edit_calendar_outlined, color: AppColors.textMuted),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _DateBox(
+                    label: 'Check-in',
+                    value: stayRange == null
+                        ? 'Select date'
+                        : _formatDate(stayRange!.start),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _DateBox(
+                    label: 'Check-out',
+                    value: stayRange == null
+                        ? 'Select date'
+                        : _formatDate(stayRange!.end),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              stayRange == null
+                  ? 'Tap to choose check-in and check-out'
+                  : '$nights night${nights > 1 ? 's' : ''}',
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DateBox extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DateBox({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -552,11 +778,13 @@ class _DetailError extends StatelessWidget {
 
 class _TotalBox extends StatelessWidget {
   final String roomPrice;
+  final int nights;
   final int serviceCount;
   final double totalPrice;
 
   const _TotalBox({
     required this.roomPrice,
+    required this.nights,
     required this.serviceCount,
     required this.totalPrice,
   });
@@ -572,7 +800,10 @@ class _TotalBox extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _TotalLine(label: 'Room', value: '${_formatPrice(roomPrice)} VND'),
+          _TotalLine(
+            label: 'Room x $nights night${nights > 1 ? 's' : ''}',
+            value: '${_formatNumber(_parsePrice(roomPrice) * nights)} VND',
+          ),
           const SizedBox(height: 8),
           _TotalLine(label: 'Services', value: '$serviceCount selected'),
           const Divider(height: 22, color: Colors.white24),
@@ -738,6 +969,10 @@ String _formatNumber(double number) {
 }
 
 double _parsePrice(String value) => double.tryParse(value) ?? 0;
+
+String _formatDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
 
 int _roomTypeId(Map<String, dynamic> json) {
   return int.tryParse(
