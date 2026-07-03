@@ -252,6 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       builder: (context) => DetailRoomScreen(
                                         roomId: room.roomId,
                                         imageUrl: imageUrl,
+                                        user: widget.user,
                                       ),
                                     ),
                                   );
