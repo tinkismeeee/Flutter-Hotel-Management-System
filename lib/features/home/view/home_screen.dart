@@ -40,6 +40,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String selectedType = 'All';
   String selectedStatus = 'All Status';
   String searchQuery = '';
+  double minPrice = 0;
+  double maxPrice = 0;
+  RangeValues selectedPriceRange = const RangeValues(0, 0);
 
   @override
   void initState() {
@@ -56,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<HomeData> loadHomeData() async {
     final data = await homeController.fetchHomeData();
     rooms = data.rooms;
+    updatePriceBounds(data.rooms);
     filteredRooms = applyFilters(data.rooms);
     roomImageUrls =
         data.roomImages
@@ -81,10 +85,18 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void filterRoomsByPrice(RangeValues range) {
+    setState(() {
+      selectedPriceRange = range;
+      filteredRooms = applyFilters(rooms);
+    });
+  }
+
   void resetFilters() {
     setState(() {
       selectedType = 'All';
       selectedStatus = 'All Status';
+      selectedPriceRange = RangeValues(minPrice, maxPrice);
       filteredRooms = applyFilters(rooms);
     });
   }
@@ -103,10 +115,17 @@ class _HomeScreenState extends State<HomeScreen> {
         : typedRooms
               .where((room) => room.status == selectedStatus.toLowerCase())
               .toList();
+    final priceRooms = maxPrice <= minPrice
+        ? statusRooms
+        : statusRooms.where((room) {
+            final price = _parseRoomPrice(room.pricePerNight);
+            return price >= selectedPriceRange.start &&
+                price <= selectedPriceRange.end;
+          }).toList();
 
-    if (searchQuery.isEmpty) return statusRooms;
+    if (searchQuery.isEmpty) return priceRooms;
 
-    return statusRooms.where((room) {
+    return priceRooms.where((room) {
       final text = [
         room.roomNumber,
         room.roomTypeName,
@@ -119,6 +138,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
   }
 
+  void updatePriceBounds(List<RoomModel> source) {
+    if (source.isEmpty) return;
+
+    final prices = source.map((room) => _parseRoomPrice(room.pricePerNight));
+    minPrice = prices.reduce((a, b) => a < b ? a : b);
+    maxPrice = prices.reduce((a, b) => a > b ? a : b);
+    selectedPriceRange = RangeValues(minPrice, maxPrice);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -129,8 +157,12 @@ class _HomeScreenState extends State<HomeScreen> {
         roomStatuses: roomStatuses,
         selectedType: selectedType,
         selectedStatus: selectedStatus,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        selectedPriceRange: selectedPriceRange,
         onTypeSelected: filterRooms,
         onStatusSelected: filterRoomsByStatus,
+        onPriceChanged: filterRoomsByPrice,
         onReset: resetFilters,
       ),
       body: SafeArea(
@@ -474,8 +506,12 @@ class _FilterDrawer extends StatelessWidget {
   final List<String> roomStatuses;
   final String selectedType;
   final String selectedStatus;
+  final double minPrice;
+  final double maxPrice;
+  final RangeValues selectedPriceRange;
   final ValueChanged<String> onTypeSelected;
   final ValueChanged<String> onStatusSelected;
+  final ValueChanged<RangeValues> onPriceChanged;
   final VoidCallback onReset;
 
   const _FilterDrawer({
@@ -483,8 +519,12 @@ class _FilterDrawer extends StatelessWidget {
     required this.roomStatuses,
     required this.selectedType,
     required this.selectedStatus,
+    required this.minPrice,
+    required this.maxPrice,
+    required this.selectedPriceRange,
     required this.onTypeSelected,
     required this.onStatusSelected,
+    required this.onPriceChanged,
     required this.onReset,
   });
 
@@ -529,6 +569,13 @@ class _FilterDrawer extends StatelessWidget {
                 labels: roomStatuses,
                 selectedLabel: selectedStatus,
                 onSelected: onStatusSelected,
+              ),
+              const SizedBox(height: 24),
+              _DrawerPriceSection(
+                minPrice: minPrice,
+                maxPrice: maxPrice,
+                selectedPriceRange: selectedPriceRange,
+                onChanged: onPriceChanged,
               ),
               const Spacer(),
               SizedBox(
@@ -594,6 +641,76 @@ class _DrawerFilterSection extends StatelessWidget {
               ),
             );
           }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _DrawerPriceSection extends StatelessWidget {
+  final double minPrice;
+  final double maxPrice;
+  final RangeValues selectedPriceRange;
+  final ValueChanged<RangeValues> onChanged;
+
+  const _DrawerPriceSection({
+    required this.minPrice,
+    required this.maxPrice,
+    required this.selectedPriceRange,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final canSlide = maxPrice > minPrice;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Price range',
+          style: TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                canSlide
+                    ? '${_formatRoomPrice(selectedPriceRange.start.toString())} - ${_formatRoomPrice(selectedPriceRange.end.toString())} VND'
+                    : 'No price range',
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              RangeSlider(
+                values: selectedPriceRange,
+                min: minPrice,
+                max: canSlide ? maxPrice : minPrice + 1,
+                divisions: canSlide ? 20 : null,
+                labels: RangeLabels(
+                  _formatRoomPrice(selectedPriceRange.start.toString()),
+                  _formatRoomPrice(selectedPriceRange.end.toString()),
+                ),
+                onChanged: canSlide ? onChanged : null,
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -1058,10 +1175,14 @@ class _SkeletonBox extends StatelessWidget {
 }
 
 String _formatRoomPrice(String value) {
-  final number = double.tryParse(value) ?? 0;
+  final number = _parseRoomPrice(value);
   return number
       .toStringAsFixed(0)
       .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
+}
+
+double _parseRoomPrice(String value) {
+  return double.tryParse(value) ?? 0;
 }
 
 const _fallbackRoomImageUrls = [
