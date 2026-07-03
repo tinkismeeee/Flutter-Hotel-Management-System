@@ -7,7 +7,8 @@ class ApiEndpoints {
   static const String customer = "$baseUrl/customer";
   static const String customerUpdatePassword = "$customer/update-password";
   static const String room = "$baseUrl/rooms";
-
+  static const String roomTypes = "$baseUrl/room-types";
+  static const String service = "$baseUrl/services";
   static String customerByEmail(String email) => "$customer/email/$email";
   static String customerById(String id) => "$customer/$id";
 }

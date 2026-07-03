@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/models/booking_service_model.dart';
 import '../../../core/models/room_model.dart';
 import '../../../core/models/user_model.dart';
 
@@ -8,13 +9,22 @@ class PaymentQrScreen extends StatelessWidget {
 
   final RoomModel room;
   final UserModel user;
+  final List<BookingServiceModel> services;
+  final double? totalPrice;
 
-  const PaymentQrScreen({super.key, required this.room, required this.user});
+  const PaymentQrScreen({
+    super.key,
+    required this.room,
+    required this.user,
+    this.services = const [],
+    this.totalPrice,
+  });
 
   @override
   Widget build(BuildContext context) {
     final payerName = _payerName(user);
     final transferContent = 'ROOM-${room.roomNumber}-${user.username}';
+    final amount = totalPrice ?? _parsePrice(room.pricePerNight);
 
     return Scaffold(
       backgroundColor: const Color(0xFFFEFEFE),
@@ -63,7 +73,7 @@ class PaymentQrScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    '${_formatPrice(room.pricePerNight)} VND',
+                    '${_formatNumber(amount)} VND',
                     style: const TextStyle(
                       color: Color(0xFF2852AF),
                       fontSize: 22,
@@ -71,6 +81,12 @@ class PaymentQrScreen extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  if (services.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ...services.map(
+                      (service) => _SelectedServiceLine(service: service),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -195,8 +211,48 @@ class _QrPlaceholder extends StatelessWidget {
 }
 
 String _formatPrice(String value) {
-  final number = double.tryParse(value) ?? 0;
+  return _formatNumber(_parsePrice(value));
+}
+
+String _formatNumber(double number) {
   return number
       .toStringAsFixed(0)
       .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
+}
+
+double _parsePrice(String value) => double.tryParse(value) ?? 0;
+
+class _SelectedServiceLine extends StatelessWidget {
+  final BookingServiceModel service;
+
+  const _SelectedServiceLine({required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              service.name,
+              style: const TextStyle(
+                color: Color(0xFF78828A),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            '${_formatPrice(service.price)} VND',
+            style: const TextStyle(
+              color: Color(0xFF171725),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

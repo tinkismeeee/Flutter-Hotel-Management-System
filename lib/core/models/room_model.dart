@@ -37,7 +37,22 @@ class RoomModel {
       description: json['description']?.toString() ?? '',
       status: json['status']?.toString() ?? '',
       isActive: json['is_active'] == true,
-      roomTypeName: json['room_type_name']?.toString() ?? '',
+      roomTypeName:
+          json['room_type_name']?.toString() ??
+          _roomTypeNameFromId(
+            int.tryParse(json['room_type_id']?.toString() ?? '') ?? 0,
+          ),
     );
   }
+}
+
+String _roomTypeNameFromId(int id) {
+  return switch (id) {
+    1 => 'Standard',
+    2 => 'Deluxe',
+    3 => 'Suite',
+    4 => 'Family',
+    5 => 'Business',
+    _ => '',
+  };
 }
