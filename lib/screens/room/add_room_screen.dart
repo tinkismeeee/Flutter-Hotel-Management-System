@@ -11,21 +11,72 @@ class AddRoomScreen extends StatefulWidget {
 
 class _AddRoomScreenState extends State<AddRoomScreen> {
   final roomNumberController = TextEditingController();
-  final roomTypeIdController = TextEditingController();
   final floorController = TextEditingController();
   final priceController = TextEditingController();
   final maxGuestsController = TextEditingController();
   final bedCountController = TextEditingController();
   final descriptionController = TextEditingController();
 
+  int selectedRoomTypeId = 1;
+
   String status = 'available';
   bool isActive = true;
   bool isLoading = false;
 
+  final List<Map<String, dynamic>> roomTypes = [
+    {
+      'id': 1,
+      'name': 'Standard',
+      'price': 500000.0,
+      'description': 'Basic room with one bed',
+    },
+    {
+      'id': 2,
+      'name': 'Deluxe',
+      'price': 1200000.0,
+      'description': 'Spacious room with city view',
+    },
+    {
+      'id': 3,
+      'name': 'Suite',
+      'price': 2500000.0,
+      'description': 'Luxury room with living area and kitchen',
+    },
+    {
+      'id': 4,
+      'name': 'Family',
+      'price': 580000.0,
+      'description': 'Large room for family stay',
+    },
+    {
+      'id': 5,
+      'name': 'Business',
+      'price': 1500000.0,
+      'description': 'Room with working desk and Wi-Fi',
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    updateRoomTypeInfo(1);
+  }
+
+  void updateRoomTypeInfo(int roomTypeId) {
+    final selected = roomTypes.firstWhere(
+      (item) => item['id'] == roomTypeId,
+    );
+
+    setState(() {
+      selectedRoomTypeId = roomTypeId;
+      priceController.text = selected['price'].toStringAsFixed(0);
+      descriptionController.text = selected['description'];
+    });
+  }
+
   @override
   void dispose() {
     roomNumberController.dispose();
-    roomTypeIdController.dispose();
     floorController.dispose();
     priceController.dispose();
     maxGuestsController.dispose();
@@ -36,22 +87,25 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
 
   Future<void> addRoom() async {
     if (roomNumberController.text.trim().isEmpty ||
-        roomTypeIdController.text.trim().isEmpty ||
         floorController.text.trim().isEmpty ||
         priceController.text.trim().isEmpty ||
         maxGuestsController.text.trim().isEmpty ||
         bedCountController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin')),
+        const SnackBar(
+          content: Text('Vui lòng nhập đầy đủ thông tin'),
+        ),
       );
       return;
     }
 
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+    });
 
     final success = await RoomService.addRoom(
       roomNumber: roomNumberController.text.trim(),
-      roomTypeId: int.parse(roomTypeIdController.text.trim()),
+      roomTypeId: selectedRoomTypeId,
       floor: int.parse(floorController.text.trim()),
       pricePerNight: double.parse(priceController.text.trim()),
       maxGuests: int.parse(maxGuestsController.text.trim()),
@@ -63,22 +117,33 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
 
     if (!mounted) return;
 
-    setState(() => isLoading = false);
+    setState(() {
+      isLoading = false;
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(success ? 'Thêm phòng thành công' : 'Thêm phòng thất bại')),
+      SnackBar(
+        content: Text(
+          success ? 'Thêm phòng thành công' : 'Thêm phòng thất bại',
+        ),
+      ),
     );
 
     if (success) Navigator.pop(context);
   }
 
-  Widget inputField(String label, TextEditingController controller,
-      {TextInputType type = TextInputType.text}) {
+  Widget inputField(
+    String label,
+    TextEditingController controller, {
+    TextInputType type = TextInputType.text,
+    bool readOnly = false,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       child: TextField(
         controller: controller,
         keyboardType: type,
+        readOnly: readOnly,
         decoration: InputDecoration(
           labelText: label,
           filled: true,
@@ -92,6 +157,36 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
             borderRadius: BorderRadius.circular(18),
             borderSide: const BorderSide(color: AppColors.gold, width: 2),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget roomTypeDropdown() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: selectedRoomTypeId,
+          isExpanded: true,
+          items: roomTypes.map((type) {
+            return DropdownMenuItem<int>(
+              value: type['id'],
+              child: Text(
+                '${type['name']} - ${type['price'].toStringAsFixed(0)} VNĐ',
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) {
+              updateRoomTypeInfo(value);
+            }
+          },
         ),
       ),
     );
@@ -159,6 +254,10 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedRoomType = roomTypes.firstWhere(
+      (item) => item['id'] == selectedRoomTypeId,
+    );
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -170,12 +269,52 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                 padding: const EdgeInsets.all(20),
                 children: [
                   inputField('Số phòng', roomNumberController),
-                  inputField('ID loại phòng', roomTypeIdController, type: TextInputType.number),
-                  inputField('Tầng', floorController, type: TextInputType.number),
-                  inputField('Giá mỗi đêm', priceController, type: TextInputType.number),
-                  inputField('Số khách tối đa', maxGuestsController, type: TextInputType.number),
-                  inputField('Số giường', bedCountController, type: TextInputType.number),
-                  inputField('Mô tả', descriptionController),
+
+                  roomTypeDropdown(),
+
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.gold.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Text(
+                      'Loại phòng: ${selectedRoomType['name']}',
+                      style: const TextStyle(
+                        color: AppColors.navy,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+
+                  inputField(
+                    'Tầng',
+                    floorController,
+                    type: TextInputType.number,
+                  ),
+                  inputField(
+                    'Giá mỗi đêm',
+                    priceController,
+                    type: TextInputType.number,
+                    readOnly: true,
+                  ),
+                  inputField(
+                    'Số khách tối đa',
+                    maxGuestsController,
+                    type: TextInputType.number,
+                  ),
+                  inputField(
+                    'Số giường',
+                    bedCountController,
+                    type: TextInputType.number,
+                  ),
+                  inputField(
+                    'Mô tả',
+                    descriptionController,
+                    readOnly: true,
+                  ),
+
                   statusDropdown(),
 
                   SwitchListTile(
@@ -183,7 +322,9 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                     activeColor: AppColors.gold,
                     title: const Text('Đang hoạt động'),
                     onChanged: (value) {
-                      setState(() => isActive = value);
+                      setState(() {
+                        isActive = value;
+                      });
                     },
                   ),
 
@@ -199,7 +340,9 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                         borderRadius: BorderRadius.circular(18),
                       ),
                     ),
-                    child: Text(isLoading ? 'Đang thêm...' : 'Thêm phòng'),
+                    child: Text(
+                      isLoading ? 'Đang thêm...' : 'Thêm phòng',
+                    ),
                   ),
                 ],
               ),
