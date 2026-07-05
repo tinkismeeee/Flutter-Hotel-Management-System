@@ -7,6 +7,7 @@ import '../booking/booking_list_screen.dart';
 import '../service/service_list_screen.dart';
 import '../promotion/promotion_list_screen.dart';
 import '../revenue/revenue_dashboard_screen.dart';
+import '../customer/customer_list_screen.dart';
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
 
@@ -96,7 +97,7 @@ class AdminScreen extends StatelessWidget {
                     context,
                     title: 'Khách hàng',
                     icon: Icons.person_rounded,
-                    screen: const EmptyScreen(title: 'Quản lý phòng'),
+                    screen: const CustomerListScreen(),
                   ),
                   adminButton(
                     context,
@@ -133,6 +134,12 @@ class AdminScreen extends StatelessWidget {
                     title: 'Doanh thu',
                     icon: Icons.bar_chart_rounded,
                     screen: const RevenueDashboardScreen(),
+                  ),
+                  adminButton(
+                    context,
+                    title: 'Logout',
+                    icon: Icons.bar_chart_rounded,
+                    screen: const EmptyScreen(title: 'Logout'),
                   ),
                 ],
               ),
