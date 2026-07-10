@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../utils/app_colors.dart';
 import '../promotion/promotion_list_screen.dart';
+import '../rating/rating_list_screen.dart';
 import '../service/service_list_screen.dart';
 import 'daily_revenue_screen.dart';
 import 'room_info_list_screen.dart';
@@ -104,6 +105,12 @@ class StaffHomeScreen extends StatelessWidget {
                     title: 'Doanh thu ngày',
                     icon: Icons.today_rounded,
                     screen: const DailyRevenueScreen(),
+                  ),
+                  staffButton(
+                    context,
+                    title: 'Đánh giá',
+                    icon: Icons.star_rate_rounded,
+                    screen: const RatingListScreen(),
                   ),
                 ],
               ),
