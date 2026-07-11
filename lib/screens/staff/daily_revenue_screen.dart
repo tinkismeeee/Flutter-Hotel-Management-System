@@ -156,7 +156,7 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
           ),
           const Expanded(
             child: Text(
-              'Doanh thu theo khoảng ngày',
+              'Doanh thu',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
