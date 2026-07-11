@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/room.dart';
 
 class RoomService {
-  static const String baseUrl = 'http://143.198.221.127/api/rooms';
+  static const String baseUrl = 'http://143.198.221.127:5678/api/rooms';
 
   static const Map<String, String> headers = {
     'Content-Type': 'application/json',

@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/booking.dart';
 
 class BookingService {
-  static const String baseUrl = 'http://143.198.221.127/api/bookings';
+  static const String baseUrl = 'http://143.198.221.127:5678/api/bookings';
 
   static const Map<String, String> headers = {
     'Content-Type': 'application/json',
