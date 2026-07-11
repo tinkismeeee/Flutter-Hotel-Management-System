@@ -7,7 +7,7 @@ import '../../../core/const/api_endpoints.dart';
 import '../../../core/models/room_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../payment/view/payment_qr_screen.dart';
-
+// làm thêm tag, service
 class DetailRoomScreen extends StatefulWidget {
   final int roomId;
   final String? imageUrl;
