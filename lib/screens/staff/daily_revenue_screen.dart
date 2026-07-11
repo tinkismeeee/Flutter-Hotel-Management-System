@@ -14,32 +14,54 @@ class DailyRevenueScreen extends StatefulWidget {
 
 class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
   late Future<DailyRevenueReport> reportFuture;
-  DateTime selectedDate = DateTime.now();
+  DateTime selectedStartDate = DateTime.now();
+  DateTime selectedEndDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    reportFuture = RevenueReportService.getDailyRevenue(selectedDate);
+    reportFuture = RevenueReportService.getRevenueRange(
+      selectedStartDate,
+      selectedEndDate,
+    );
   }
 
   void refreshData() {
     setState(() {
-      reportFuture = RevenueReportService.getDailyRevenue(selectedDate);
+      reportFuture = RevenueReportService.getRevenueRange(
+        selectedStartDate,
+        selectedEndDate,
+      );
     });
   }
 
-  Future<void> pickDate() async {
-    final date = await showDatePicker(
+  Future<void> pickDateRange() async {
+    final range = await showDateRangePicker(
       context: context,
-      initialDate: selectedDate,
+      initialDateRange: DateTimeRange(
+        start: selectedStartDate,
+        end: selectedEndDate,
+      ),
       firstDate: DateTime(2020),
       lastDate: DateTime(2035),
     );
 
-    if (date != null) {
+    if (range != null) {
       setState(() {
-        selectedDate = date;
-        reportFuture = RevenueReportService.getDailyRevenue(selectedDate);
+        selectedStartDate = DateTime(
+          range.start.year,
+          range.start.month,
+          range.start.day,
+        );
+        selectedEndDate = DateTime(
+          range.end.year,
+          range.end.month,
+          range.end.day,
+        );
+        reportFuture = RevenueReportService.getRevenueRange(
+          selectedStartDate,
+          selectedEndDate,
+        );
       });
     }
   }
@@ -47,6 +69,47 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
   String shortDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/'
         '${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  String dateRangeLabel() {
+    final sameDay =
+        selectedStartDate.year == selectedEndDate.year &&
+        selectedStartDate.month == selectedEndDate.month &&
+        selectedStartDate.day == selectedEndDate.day;
+
+    if (sameDay) return shortDate(selectedStartDate);
+
+    return '${shortDate(selectedStartDate)} - ${shortDate(selectedEndDate)}';
+  }
+
+  List<DateTime> datesInRange() {
+    final dates = <DateTime>[];
+    var current = DateTime(
+      selectedStartDate.year,
+      selectedStartDate.month,
+      selectedStartDate.day,
+    );
+    final end = DateTime(
+      selectedEndDate.year,
+      selectedEndDate.month,
+      selectedEndDate.day,
+    );
+
+    while (!current.isAfter(end)) {
+      dates.add(current);
+      current = current.add(const Duration(days: 1));
+    }
+
+    return dates;
+  }
+
+  List<Invoice> invoicesForDate(List<Invoice> invoices, DateTime date) {
+    return invoices.where((invoice) {
+      final invoiceDate = invoice.date;
+      return invoiceDate.year == date.year &&
+          invoiceDate.month == date.month &&
+          invoiceDate.day == date.day;
+    }).toList();
   }
 
   String money(double value) {
@@ -93,7 +156,7 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
           ),
           const Expanded(
             child: Text(
-              'Doanh thu ngày',
+              'Doanh thu theo khoảng ngày',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -138,23 +201,30 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  shortDate(selectedDate),
+                  dateRangeLabel(),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 22,
+                    fontSize: 19,
                     fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Chọn khoảng ngày để tổng hợp doanh thu',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
           TextButton.icon(
-            onPressed: pickDate,
+            onPressed: pickDateRange,
             icon: const Icon(Icons.edit_calendar_rounded, size: 18),
             label: const Text('Chọn'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.gold,
-            ),
+            style: TextButton.styleFrom(foregroundColor: AppColors.gold),
           ),
         ],
       ),
@@ -269,8 +339,9 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
   Widget revenueBreakdown(DailyRevenueReport report) {
     final subtotal = report.roomRevenue + report.serviceRevenue;
     final roomPercent = subtotal == 0 ? 0.0 : report.roomRevenue / subtotal;
-    final servicePercent =
-        subtotal == 0 ? 0.0 : report.serviceRevenue / subtotal;
+    final servicePercent = subtotal == 0
+        ? 0.0
+        : report.serviceRevenue / subtotal;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -358,6 +429,104 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
     );
   }
 
+  Widget dailyRevenueList(DailyRevenueReport report) {
+    final dates = datesInRange();
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Doanh thu theo từng ngày',
+            style: TextStyle(
+              color: AppColors.textDark,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...dates.map((date) {
+            final invoices = invoicesForDate(report.invoices, date);
+            final total = invoices.fold(0.0, (sum, e) => sum + e.finalAmount);
+
+            return dailyRevenueRow(
+              date: date,
+              invoiceCount: invoices.length,
+              totalRevenue: total,
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget dailyRevenueRow({
+    required DateTime date,
+    required int invoiceCount,
+    required double totalRevenue,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 42,
+            width: 42,
+            decoration: BoxDecoration(
+              color: AppColors.gold.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.event_note_rounded, color: AppColors.gold),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  shortDate(date),
+                  style: const TextStyle(
+                    color: AppColors.textDark,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '$invoiceCount hóa đơn',
+                  style: const TextStyle(color: AppColors.textGray),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            compactMoney(totalRevenue),
+            style: const TextStyle(
+              color: AppColors.gold,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget invoiceList(List<Invoice> invoices) {
     if (invoices.isEmpty) {
       return Container(
@@ -368,7 +537,7 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
           borderRadius: BorderRadius.circular(22),
         ),
         child: const Text(
-          'Không có hóa đơn trong ngày',
+          'Không có hóa đơn trong khoảng ngày',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: AppColors.textGray,
@@ -382,7 +551,7 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Hóa đơn trong ngày',
+          'Hóa đơn trong khoảng ngày',
           style: TextStyle(
             color: AppColors.textDark,
             fontSize: 20,
@@ -430,6 +599,10 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
+                  'Ngày: ${shortDate(invoice.date)}',
+                  style: const TextStyle(color: AppColors.textGray),
+                ),
+                Text(
                   'Booking: ${invoice.bookingId} • Staff: ${invoice.staffId}',
                   style: const TextStyle(color: AppColors.textGray),
                 ),
@@ -463,6 +636,8 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
         kpiGrid(report),
         const SizedBox(height: 20),
         revenueBreakdown(report),
+        const SizedBox(height: 20),
+        dailyRevenueList(report),
         const SizedBox(height: 20),
         invoiceList(report.invoices),
       ],
@@ -500,8 +675,12 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
                     );
                   }
 
-                  final report = snapshot.data ??
-                      DailyRevenueReport.fromInvoices(selectedDate, const []);
+                  final report =
+                      snapshot.data ??
+                      DailyRevenueReport.fromInvoices(
+                        selectedStartDate,
+                        const [],
+                      );
 
                   return content(report);
                 },
