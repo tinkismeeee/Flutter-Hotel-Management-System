@@ -1,10 +1,26 @@
 import 'package:flutter/material.dart';
+import 'screens/admin/admin_screen.dart';
 
-class AppColors {
-  static const navy = Color(0xFF16233D);
-  static const gold = Color(0xFFC2A04C);
-  static const background = Color(0xFFF6F7FB);
-  static const card = Colors.white;
-  static const textDark = Color(0xFF1F2937);
-  static const textGray = Color(0xFF6B7280);
+void main() {
+  runApp(const HotelAdminApp());
+}
+
+class HotelAdminApp extends StatelessWidget {
+  const HotelAdminApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'MAISON Hotel Admin',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        scaffoldBackgroundColor: const Color(0xFF16233D),
+        fontFamily: 'Roboto',
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFC2A04C),
+        ),
+      ),
+      home: const AdminScreen(),
+    );
+  }
 }

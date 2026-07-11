@@ -1,50 +1,58 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/room_type.dart';
+import '../models/hotel_service.dart';
 
-class RoomTypeService {
-  static const String baseUrl = 'http://143.198.221.127:5678/api/room-types';
+class HotelServiceService {
+  static const String baseUrl = 'http://143.198.221.127:5678/api/services';
 
   static const Map<String, String> headers = {
     'Content-Type': 'application/json',
     'x-user-id': '1',
   };
 
-  static Future<List<RoomType>> getRoomTypes() async {
+  static Future<List<HotelService>> getServices() async {
     final response = await http.get(
       Uri.parse(baseUrl),
     );
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
-      return data.map((e) => RoomType.fromJson(e)).toList();
+      return data.map((e) => HotelService.fromJson(e)).toList();
     } else {
-      throw Exception('Không thể tải danh sách loại phòng');
+      throw Exception('Không thể tải danh sách dịch vụ');
     }
   }
 
-  static Future<bool> addRoomType({
+  static Future<bool> addService({
+    required String serviceCode,
     required String name,
+    required double price,
+    required bool availability,
     required String description,
   }) async {
     final response = await http.post(
       Uri.parse(baseUrl),
       headers: headers,
       body: jsonEncode({
+        'service_code': serviceCode,
         'name': name,
+        'price': price,
+        'availability': availability,
         'description': description,
       }),
     );
 
-    print('ADD ROOM TYPE STATUS: ${response.statusCode}');
-    print('ADD ROOM TYPE BODY: ${response.body}');
+    print('ADD SERVICE STATUS: ${response.statusCode}');
+    print('ADD SERVICE BODY: ${response.body}');
 
     return response.statusCode == 200 || response.statusCode == 201;
   }
 
-  static Future<bool> updateRoomType({
+  static Future<bool> updateService({
     required int id,
     required String name,
+    required double price,
+    required bool availability,
     required String description,
   }) async {
     final response = await http.put(
@@ -52,24 +60,26 @@ class RoomTypeService {
       headers: headers,
       body: jsonEncode({
         'name': name,
+        'price': price,
+        'availability': availability,
         'description': description,
       }),
     );
 
-    print('UPDATE ROOM TYPE STATUS: ${response.statusCode}');
-    print('UPDATE ROOM TYPE BODY: ${response.body}');
+    print('UPDATE SERVICE STATUS: ${response.statusCode}');
+    print('UPDATE SERVICE BODY: ${response.body}');
 
     return response.statusCode == 200;
   }
 
-  static Future<bool> deleteRoomType(int id) async {
+  static Future<bool> deleteService(int id) async {
     final response = await http.delete(
       Uri.parse('$baseUrl/$id'),
       headers: headers,
     );
 
-    print('DELETE ROOM TYPE STATUS: ${response.statusCode}');
-    print('DELETE ROOM TYPE BODY: ${response.body}');
+    print('DELETE SERVICE STATUS: ${response.statusCode}');
+    print('DELETE SERVICE BODY: ${response.body}');
 
     return response.statusCode == 200 || response.statusCode == 204;
   }

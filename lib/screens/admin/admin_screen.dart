@@ -8,6 +8,7 @@ import '../service/service_list_screen.dart';
 import '../promotion/promotion_list_screen.dart';
 import '../revenue/revenue_dashboard_screen.dart';
 import '../customer/customer_list_screen.dart';
+
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
 
@@ -25,6 +26,7 @@ class AdminScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
+            // Header: Giới hạn chiều cao tối đa để tránh bị kéo quá dài trên màn hình lớn
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 30),
@@ -63,7 +65,7 @@ class AdminScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -79,69 +81,100 @@ class AdminScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
+            // Dùng LayoutBuilder để tính toán số lượng cột dựa trên chiều rộng màn hình
             Expanded(
-              child: GridView.count(
-                padding: const EdgeInsets.all(20),
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.08,
-                children: [
-                  adminButton(
-                    context,
-                    title: 'Nhân viên',
-                    icon: Icons.people_alt_rounded,
-                    screen: const EmployeeListScreen(),
-                  ),
-                  adminButton(
-                    context,
-                    title: 'Khách hàng',
-                    icon: Icons.person_rounded,
-                    screen: const CustomerListScreen(),
-                  ),
-                  adminButton(
-                    context,
-                    title: 'Phòng',
-                    icon: Icons.bed_rounded,
-                    screen: const RoomListScreen(),
-                  ),
-                  adminButton(
-                    context,
-                    title: 'Loại phòng',
-                    icon: Icons.meeting_room_rounded,
-                    screen: const RoomTypeListScreen(),
-                  ),
-                  adminButton(
-                    context,
-                    title: 'Booking',
-                    icon: Icons.calendar_month_rounded,
-                    screen: const BookingListScreen(),
-                  ),
-                  adminButton(
-                    context,
-                    title: 'Dịch vụ',
-                    icon: Icons.room_service_rounded,
-                    screen: const ServiceListScreen(),
-                  ),
-                  adminButton(
-                    context,
-                    title: 'Mã giảm giá',
-                    icon: Icons.discount_rounded,
-                    screen: const PromotionListScreen(),
-                  ),
-                  adminButton(
-                    context,
-                    title: 'Doanh thu',
-                    icon: Icons.bar_chart_rounded,
-                    screen: const RevenueDashboardScreen(),
-                  ),
-                  adminButton(
-                    context,
-                    title: 'Logout',
-                    icon: Icons.bar_chart_rounded,
-                    screen: const EmptyScreen(title: 'Logout'),
-                  ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  double width = constraints.maxWidth;
+
+                  // Mặc định cho điện thoại
+                  int crossAxisCount = 2;
+                  double aspectRatio = 1.1;
+
+                  if (width > 1200) {
+                    // Màn hình Máy tính lớn (PC / Web)
+                    crossAxisCount = 6;
+                    aspectRatio = 1.2;
+                  } else if (width > 800) {
+                    // Màn hình Máy tính nhỏ hoặc Tablet ngang
+                    crossAxisCount = 4;
+                    aspectRatio = 1.15;
+                  } else if (width > 600) {
+                    // Màn hình Máy tính bảng (Tablet dọc)
+                    crossAxisCount = 3;
+                    aspectRatio = 1.1;
+                  }
+
+                  // Bọc GridView trong một Center + ConstrainedBox để nội dung không bị bè quá rộng trên PC
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1400),
+                      child: GridView.count(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: 18,
+                        mainAxisSpacing: 18,
+                        childAspectRatio: aspectRatio,
+                        children: [
+                          adminButton(
+                            context,
+                            title: 'Nhân viên',
+                            icon: Icons.people_alt_rounded,
+                            screen: const EmployeeListScreen(),
+                          ),
+                          adminButton(
+                            context,
+                            title: 'Khách hàng',
+                            icon: Icons.person_rounded,
+                            screen: const CustomerListScreen(),
+                          ),
+                          adminButton(
+                            context,
+                            title: 'Phòng',
+                            icon: Icons.bed_rounded,
+                            screen: const RoomListScreen(),
+                          ),
+                          adminButton(
+                            context,
+                            title: 'Loại phòng',
+                            icon: Icons.meeting_room_rounded,
+                            screen: const RoomTypeListScreen(),
+                          ),
+                          adminButton(
+                            context,
+                            title: 'Booking',
+                            icon: Icons.calendar_month_rounded,
+                            screen: const BookingListScreen(),
+                          ),
+                          adminButton(
+                            context,
+                            title: 'Dịch vụ',
+                            icon: Icons.room_service_rounded,
+                            screen: const ServiceListScreen(),
+                          ),
+                          adminButton(
+                            context,
+                            title: 'Mã giảm giá',
+                            icon: Icons.discount_rounded,
+                            screen: const PromotionListScreen(),
+                          ),
+                          adminButton(
+                            context,
+                            title: 'Doanh thu',
+                            icon: Icons.bar_chart_rounded,
+                            screen: const RevenueDashboardScreen(),
+                          ),
+                          adminButton(
+                            context,
+                            title: 'Logout',
+                            icon: Icons.logout_rounded, // Đổi icon sang logout cho đúng nghĩa
+                            screen: const EmptyScreen(title: 'Logout'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -157,17 +190,17 @@ class AdminScreen extends StatelessWidget {
         required Widget screen,
       }) {
     return InkWell(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(20),
       onTap: () => openScreen(context, screen),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -175,25 +208,31 @@ class AdminScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              height: 58,
-              width: 58,
+              height: 54,
+              width: 54,
               decoration: BoxDecoration(
-                color: AppColors.gold.withOpacity(0.16),
-                borderRadius: BorderRadius.circular(18),
+                color: AppColors.gold.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
                 icon,
                 color: AppColors.gold,
-                size: 32,
+                size: 28,
               ),
             ),
-            const SizedBox(height: 14),
-            Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.textDark,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                title,
+                textAlign: TextAlign.center, // Căn giữa chữ đề phòng tên danh mục dài
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis, // Nếu chữ quá dài tự động thêm dấu "..." thay vì vỡ dòng
+                style: const TextStyle(
+                  color: AppColors.textDark,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
