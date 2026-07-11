@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/models/booking_service_model.dart';
+import '../../../core/models/payos_payment_model.dart';
 import '../../../core/models/room_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/theme/colors.dart';
+import '../controller/payment_controller.dart';
 import 'payment_qr_screen.dart';
 
 class PaymentConfirmationScreen extends StatefulWidget {
@@ -14,7 +16,6 @@ class PaymentConfirmationScreen extends StatefulWidget {
   final DateTimeRange? stayRange;
   final int nights;
   final int guests;
-  final double totalPrice;
 
   const PaymentConfirmationScreen({
     super.key,
@@ -25,7 +26,6 @@ class PaymentConfirmationScreen extends StatefulWidget {
     required this.stayRange,
     required this.nights,
     required this.guests,
-    required this.totalPrice,
   });
 
   @override
@@ -35,12 +35,35 @@ class PaymentConfirmationScreen extends StatefulWidget {
 
 class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   final promoController = TextEditingController();
+  final paymentController = PaymentController();
   String? promoError;
-  String? appliedCode;
-  double discountRate = 0;
+  String? paymentError;
+  PromotionModel? appliedPromotion;
+  bool isApplyingPromo = false;
+  bool isCreatingPayment = false;
 
-  double get discountAmount => widget.totalPrice * discountRate;
-  double get finalTotal => widget.totalPrice - discountAmount;
+  double get roomTotal =>
+      _parsePrice(widget.room.pricePerNight) * widget.nights;
+  double get serviceTotal => widget.services.fold(
+    0,
+    (sum, service) => sum + _parsePrice(service.price),
+  );
+  double get subtotal => roomTotal + serviceTotal;
+  double get discountAmount {
+    final promotion = appliedPromotion;
+    if (promotion == null) return 0;
+    final discountBase = promotion.scope == 'room'
+        ? roomTotal
+        : promotion.scope == 'service'
+        ? serviceTotal
+        : subtotal;
+    return (discountBase * promotion.discountValue / 100).roundToDouble();
+  }
+
+  double get vatAmount =>
+      ((subtotal - discountAmount).clamp(0, double.infinity) * 0.1)
+          .roundToDouble();
+  double get finalTotal => subtotal - discountAmount + vatAmount;
 
   @override
   void dispose() {
@@ -70,41 +93,47 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             _PromoBox(
               controller: promoController,
               errorText: promoError,
-              appliedCode: appliedCode,
+              appliedCode: appliedPromotion?.code,
+              isLoading: isApplyingPromo,
               onApply: applyPromo,
               onClear: clearPromo,
             ),
             const SizedBox(height: 18),
             _PriceBox(
-              subtotal: widget.totalPrice,
+              subtotal: subtotal,
               discountAmount: discountAmount,
+              vatAmount: vatAmount,
               finalTotal: finalTotal,
             ),
+            if (paymentError != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                paymentError!,
+                style: const TextStyle(
+                  color: AppColors.danger,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
             const SizedBox(height: 22),
             SizedBox(
               width: double.infinity,
               height: 54,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => PaymentQrScreen(
-                        room: widget.room,
-                        roomTypeName: widget.roomTypeName,
-                        user: widget.user,
-                        services: widget.services,
-                        stayRange: widget.stayRange,
-                        nights: widget.nights,
-                        guests: widget.guests,
-                        totalPrice: finalTotal,
-                        discountCode: appliedCode,
-                        discountAmount: discountAmount,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.qr_code_2),
-                label: const Text('Continue to payment'),
+                onPressed: isCreatingPayment ? null : createPayment,
+                icon: isCreatingPayment
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.qr_code_2),
+                label: Text(
+                  isCreatingPayment
+                      ? 'Creating payment...'
+                      : 'Continue to payment',
+                ),
               ),
             ),
           ],
@@ -113,33 +142,94 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     );
   }
 
-  void applyPromo() {
+  Future<void> applyPromo() async {
     final code = promoController.text.trim().toUpperCase();
-    final rate = _discountRate(code);
-    setState(() {
-      if (code.isEmpty) {
+    if (code.isEmpty) {
+      setState(() {
         promoError = 'Please enter a discount code';
-        appliedCode = null;
-        discountRate = 0;
-      } else if (rate == 0) {
-        promoError = 'Invalid discount code';
-        appliedCode = null;
-        discountRate = 0;
-      } else {
-        promoError = null;
-        appliedCode = code;
-        discountRate = rate;
-      }
+        appliedPromotion = null;
+      });
+      return;
+    }
+
+    setState(() {
+      isApplyingPromo = true;
+      promoError = null;
     });
+    try {
+      final promotion = await paymentController.validatePromotion(code);
+      if (!mounted) return;
+      setState(() {
+        appliedPromotion = promotion;
+        promoError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        appliedPromotion = null;
+        promoError = _cleanError(error);
+      });
+    } finally {
+      if (mounted) setState(() => isApplyingPromo = false);
+    }
   }
 
   void clearPromo() {
     setState(() {
       promoController.clear();
       promoError = null;
-      appliedCode = null;
-      discountRate = 0;
+      appliedPromotion = null;
     });
+  }
+
+  Future<void> createPayment() async {
+    if (widget.stayRange == null) {
+      setState(
+        () => paymentError = 'Check-in and check-out dates are required',
+      );
+      return;
+    }
+    if (promoController.text.trim().isNotEmpty && appliedPromotion == null) {
+      setState(() => promoError = 'Apply or clear this discount code first');
+      return;
+    }
+
+    setState(() {
+      isCreatingPayment = true;
+      paymentError = null;
+    });
+    try {
+      final payment = await paymentController.createPayment(
+        user: widget.user,
+        room: widget.room,
+        checkIn: widget.stayRange!.start,
+        checkOut: widget.stayRange!.end,
+        guests: widget.guests,
+        services: widget.services,
+        promotionCode: appliedPromotion?.code,
+      );
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => PaymentQrScreen(
+            room: widget.room,
+            roomTypeName: widget.roomTypeName,
+            services: widget.services,
+            stayRange: widget.stayRange,
+            nights: widget.nights,
+            guests: widget.guests,
+            payment: payment,
+            discountCode: appliedPromotion?.code,
+            discountAmount: discountAmount,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => paymentError = _cleanError(error));
+    } finally {
+      if (mounted) setState(() => isCreatingPayment = false);
+    }
   }
 }
 
@@ -250,6 +340,7 @@ class _PromoBox extends StatelessWidget {
   final TextEditingController controller;
   final String? errorText;
   final String? appliedCode;
+  final bool isLoading;
   final VoidCallback onApply;
   final VoidCallback onClear;
 
@@ -257,6 +348,7 @@ class _PromoBox extends StatelessWidget {
     required this.controller,
     required this.errorText,
     required this.appliedCode,
+    required this.isLoading,
     required this.onApply,
     required this.onClear,
   });
@@ -282,6 +374,7 @@ class _PromoBox extends StatelessWidget {
               Expanded(
                 child: TextField(
                   controller: controller,
+                  enabled: appliedCode == null && !isLoading,
                   textCapitalization: TextCapitalization.characters,
                   decoration: InputDecoration(
                     hintText: 'Enter code',
@@ -293,8 +386,18 @@ class _PromoBox extends StatelessWidget {
               SizedBox(
                 height: 52,
                 child: OutlinedButton(
-                  onPressed: appliedCode == null ? onApply : onClear,
-                  child: Text(appliedCode == null ? 'Apply' : 'Clear'),
+                  onPressed: isLoading
+                      ? null
+                      : appliedCode == null
+                      ? onApply
+                      : onClear,
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(appliedCode == null ? 'Apply' : 'Clear'),
                 ),
               ),
             ],
@@ -319,11 +422,13 @@ class _PromoBox extends StatelessWidget {
 class _PriceBox extends StatelessWidget {
   final double subtotal;
   final double discountAmount;
+  final double vatAmount;
   final double finalTotal;
 
   const _PriceBox({
     required this.subtotal,
     required this.discountAmount,
+    required this.vatAmount,
     required this.finalTotal,
   });
 
@@ -349,6 +454,11 @@ class _PriceBox extends StatelessWidget {
               value: '-${_formatNumber(discountAmount)} VND',
             ),
           ],
+          const SizedBox(height: 8),
+          _DarkPriceLine(
+            label: 'VAT (10%)',
+            value: '${_formatNumber(vatAmount)} VND',
+          ),
           const Divider(height: 22, color: Colors.white24),
           _DarkPriceLine(
             label: 'Total',
@@ -499,15 +609,11 @@ class _DarkPriceLine extends StatelessWidget {
   }
 }
 
-double _discountRate(String code) {
-  return switch (code) {
-    'WELCOME10' => 0.10,
-    'HOTEL15' => 0.15,
-    _ => 0,
-  };
-}
-
 double _parsePrice(String value) => double.tryParse(value) ?? 0;
+
+String _cleanError(Object error) {
+  return error.toString().replaceFirst('Exception: ', '');
+}
 
 String _formatNumber(double number) {
   return number

@@ -50,9 +50,6 @@ class _LoginPageState extends State<LoginPage> {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
-    debugPrint('Email: $email');
-    debugPrint('Password: $password');
-
     setState(() {
       isLoading = true;
     });
@@ -68,7 +65,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        loginError = 'Invalid email or password';
+        loginError = error.toString().replaceFirst('Exception: ', '');
       });
     } finally {
       if (mounted) {

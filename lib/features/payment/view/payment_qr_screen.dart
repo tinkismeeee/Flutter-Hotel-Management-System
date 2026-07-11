@@ -1,20 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/models/booking_service_model.dart';
+import '../../../core/models/payos_payment_model.dart';
 import '../../../core/models/room_model.dart';
-import '../../../core/models/user_model.dart';
+import '../../../core/theme/colors.dart';
+import '../controller/payment_controller.dart';
 
-class PaymentQrScreen extends StatelessWidget {
-  static const qrUrl = 'https://img.vietqr.io/image/TCB-2707200505-compact.png';
-
+class PaymentQrScreen extends StatefulWidget {
   final RoomModel room;
   final String? roomTypeName;
-  final UserModel user;
   final List<BookingServiceModel> services;
   final DateTimeRange? stayRange;
   final int nights;
   final int guests;
-  final double? totalPrice;
+  final PayOsPaymentModel payment;
   final String? discountCode;
   final double discountAmount;
 
@@ -22,146 +24,151 @@ class PaymentQrScreen extends StatelessWidget {
     super.key,
     required this.room,
     this.roomTypeName,
-    required this.user,
     this.services = const [],
     this.stayRange,
     this.nights = 1,
     this.guests = 1,
-    this.totalPrice,
+    required this.payment,
     this.discountCode,
     this.discountAmount = 0,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final payerName = _payerName(user);
-    final transferContent = 'ROOM-${room.roomNumber}-${user.username}';
-    final amount = totalPrice ?? _parsePrice(room.pricePerNight);
+  State<PaymentQrScreen> createState() => _PaymentQrScreenState();
+}
 
+class _PaymentQrScreenState extends State<PaymentQrScreen> {
+  final paymentController = PaymentController();
+  late PayOsPaymentModel payment;
+  Timer? statusTimer;
+  bool isChecking = false;
+  String? statusError;
+
+  bool get isPaid => payment.status.toLowerCase() == 'paid';
+  bool get isCancelled =>
+      ['cancelled', 'expired'].contains(payment.status.toLowerCase());
+
+  @override
+  void initState() {
+    super.initState();
+    payment = widget.payment;
+    statusTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => checkPaymentStatus(),
+    );
+  }
+
+  @override
+  void dispose() {
+    statusTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> checkPaymentStatus() async {
+    if (isChecking || isPaid || isCancelled) return;
+    isChecking = true;
+    try {
+      final latest = await paymentController.getPayment(payment.bookingId);
+      if (!mounted) return;
+      setState(() {
+        payment = latest;
+        statusError = null;
+      });
+      if (isPaid || isCancelled) statusTimer?.cancel();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => statusError = _cleanError(error));
+    } finally {
+      isChecking = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFEFEFE),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFEFEFE),
-        foregroundColor: const Color(0xFF171725),
-        elevation: 0,
-        title: const Text(
-          'Payment',
-          style: TextStyle(fontFamily: 'Jost', fontWeight: FontWeight.w700),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Pay with PayOS')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF6F6F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Room ${room.roomNumber}',
-                    style: const TextStyle(
-                      color: Color(0xFF171725),
-                      fontSize: 20,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    roomTypeName ?? room.roomTypeName,
-                    style: const TextStyle(
-                      color: Color(0xFF78828A),
-                      fontSize: 14,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (stayRange != null) ...[
-                    const SizedBox(height: 10),
-                    _StayLine(
-                      checkIn: _formatDate(stayRange!.start),
-                      checkOut: _formatDate(stayRange!.end),
-                      nights: nights,
-                    ),
-                  ],
-                  const SizedBox(height: 10),
-                  _GuestLine(guests: guests),
-                  const SizedBox(height: 14),
-                  Text(
-                    '${_formatNumber(amount)} VND',
-                    style: const TextStyle(
-                      color: Color(0xFF2852AF),
-                      fontSize: 22,
-                      fontFamily: 'Jost',
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (services.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    ...services.map(
-                      (service) => _SelectedServiceLine(service: service),
-                    ),
-                  ],
-                  if (discountAmount > 0 && discountCode != null) ...[
-                    const SizedBox(height: 10),
-                    _DiscountLine(code: discountCode!, amount: discountAmount),
-                  ],
-                ],
-              ),
+            _BookingSummary(
+              room: widget.room,
+              roomTypeName: widget.roomTypeName ?? widget.room.roomTypeName,
+              stayRange: widget.stayRange,
+              nights: widget.nights,
+              guests: widget.guests,
+              amount: payment.amount,
             ),
-            const SizedBox(height: 24),
-            Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  qrUrl,
-                  width: 260,
-                  height: 260,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const _QrPlaceholder();
-                  },
+            const SizedBox(height: 20),
+            if (isPaid)
+              const _PaymentResult(
+                icon: Icons.check_circle,
+                color: AppColors.success,
+                title: 'Payment successful',
+                message: 'Your booking has been confirmed.',
+              )
+            else if (isCancelled)
+              const _PaymentResult(
+                icon: Icons.cancel,
+                color: AppColors.danger,
+                title: 'Payment unavailable',
+                message: 'This payment link was cancelled or expired.',
+              )
+            else
+              _QrPanel(payment: payment),
+            if (widget.services.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              _ServicesSummary(services: widget.services),
+            ],
+            if (widget.discountCode != null && widget.discountAmount > 0) ...[
+              const SizedBox(height: 12),
+              _InfoRow(
+                label: 'Discount (${widget.discountCode})',
+                value: '-${_formatNumber(widget.discountAmount)} VND',
+                valueColor: AppColors.success,
+              ),
+            ],
+            if (statusError != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                statusError!,
+                style: const TextStyle(
+                  color: AppColors.danger,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            _PaymentInfo(label: 'Bank', value: 'Techcombank'),
-            _PaymentInfo(label: 'Account', value: '2707200505'),
-            _PaymentInfo(label: 'Name', value: payerName),
-            _PaymentInfo(label: 'Content', value: transferContent),
-            const SizedBox(height: 28),
+            ],
+            const SizedBox(height: 22),
             SizedBox(
               width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Payment confirmation sent')),
-                  );
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2852AF),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'I have paid',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontFamily: 'Jost',
-                    fontWeight: FontWeight.w700,
-                  ),
+              height: 54,
+              child: ElevatedButton.icon(
+                onPressed: isPaid
+                    ? () => Navigator.of(
+                        context,
+                      ).popUntil((route) => route.isFirst)
+                    : isCancelled
+                    ? () => Navigator.of(context).pop()
+                    : isChecking
+                    ? null
+                    : checkPaymentStatus,
+                icon: isChecking
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        isPaid ? Icons.home_outlined : Icons.refresh_outlined,
+                      ),
+                label: Text(
+                  isPaid
+                      ? 'Back to home'
+                      : isCancelled
+                      ? 'Back'
+                      : 'Check payment status',
                 ),
               ),
             ),
@@ -170,49 +177,75 @@ class PaymentQrScreen extends StatelessWidget {
       ),
     );
   }
-
-  String _payerName(UserModel user) {
-    final fullName = '${user.firstName} ${user.lastName}'.trim();
-    if (fullName.isNotEmpty) return fullName;
-    if (user.username.isNotEmpty) return user.username;
-    return user.email;
-  }
 }
 
-class _PaymentInfo extends StatelessWidget {
-  final String label;
-  final String value;
+class _BookingSummary extends StatelessWidget {
+  final RoomModel room;
+  final String roomTypeName;
+  final DateTimeRange? stayRange;
+  final int nights;
+  final int guests;
+  final int amount;
 
-  const _PaymentInfo({required this.label, required this.value});
+  const _BookingSummary({
+    required this.room,
+    required this.roomTypeName,
+    required this.stayRange,
+    required this.nights,
+    required this.guests,
+    required this.amount,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 78,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFF78828A),
-                fontSize: 14,
-                fontFamily: 'Jost',
-                fontWeight: FontWeight.w500,
-              ),
+          Text(
+            'Room ${room.roomNumber}',
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
+          const SizedBox(height: 4),
+          Text(
+            roomTypeName,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (stayRange != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              '${_formatDate(stayRange!.start)} - ${_formatDate(stayRange!.end)}'
+              ' · $nights night${nights > 1 ? 's' : ''}'
+              ' · $guests guest${guests > 1 ? 's' : ''}',
               style: const TextStyle(
-                color: Color(0xFF171725),
-                fontSize: 14,
-                fontFamily: 'Jost',
+                color: AppColors.textSecondary,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Text(
+            '${_formatNumber(amount.toDouble())} VND',
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
@@ -221,42 +254,50 @@ class _PaymentInfo extends StatelessWidget {
   }
 }
 
-class _StayLine extends StatelessWidget {
-  final String checkIn;
-  final String checkOut;
-  final int nights;
+class _QrPanel extends StatelessWidget {
+  final PayOsPaymentModel payment;
 
-  const _StayLine({
-    required this.checkIn,
-    required this.checkOut,
-    required this.nights,
-  });
+  const _QrPanel({required this.payment});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (payment.qrCode.isEmpty)
+            const SizedBox(
+              width: 260,
+              height: 260,
+              child: Center(child: Icon(Icons.qr_code_2, size: 80)),
+            )
+          else
+            QrImageView(
+              data: payment.qrCode,
+              version: QrVersions.auto,
+              size: 260,
+              backgroundColor: Colors.white,
+            ),
+          const SizedBox(height: 12),
           Text(
-            '$checkIn - $checkOut',
+            'Order ${payment.orderCode}',
             style: const TextStyle(
-              color: Color(0xFF171725),
-              fontSize: 13,
+              color: AppColors.textPrimary,
+              fontSize: 14,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
           Text(
-            '$nights night${nights > 1 ? 's' : ''}',
+            _expiryText(payment.expiresAt),
             style: const TextStyle(
-              color: Color(0xFF78828A),
+              color: AppColors.textMuted,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -267,30 +308,49 @@ class _StayLine extends StatelessWidget {
   }
 }
 
-class _GuestLine extends StatelessWidget {
-  final int guests;
+class _PaymentResult extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String message;
 
-  const _GuestLine({required this.guests});
+  const _PaymentResult({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.message,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
-      child: Row(
+      child: Column(
         children: [
-          const Icon(Icons.people_outline, size: 18, color: Color(0xFF78828A)),
-          const SizedBox(width: 8),
+          Icon(icon, size: 58, color: color),
+          const SizedBox(height: 12),
           Text(
-            '$guests guest${guests > 1 ? 's' : ''}',
+            title,
             style: const TextStyle(
-              color: Color(0xFF171725),
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -299,11 +359,39 @@ class _GuestLine extends StatelessWidget {
   }
 }
 
-class _DiscountLine extends StatelessWidget {
-  final String code;
-  final double amount;
+class _ServicesSummary extends StatelessWidget {
+  final List<BookingServiceModel> services;
 
-  const _DiscountLine({required this.code, required this.amount});
+  const _ServicesSummary({required this.services});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: services
+          .map(
+            (service) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _InfoRow(
+                label: service.name,
+                value: '${_formatNumber(_parsePrice(service.price))} VND',
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color valueColor;
+
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    this.valueColor = AppColors.textPrimary,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -311,18 +399,18 @@ class _DiscountLine extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Discount ($code)',
+            label,
             style: const TextStyle(
-              color: Color(0xFF1A9C5B),
+              color: AppColors.textMuted,
               fontSize: 13,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
         Text(
-          '-${_formatNumber(amount)} VND',
-          style: const TextStyle(
-            color: Color(0xFF1A9C5B),
+          value,
+          style: TextStyle(
+            color: valueColor,
             fontSize: 13,
             fontWeight: FontWeight.w800,
           ),
@@ -332,23 +420,13 @@ class _DiscountLine extends StatelessWidget {
   }
 }
 
-class _QrPlaceholder extends StatelessWidget {
-  const _QrPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 260,
-      height: 260,
-      color: const Color(0xFFE8EAEC),
-      alignment: Alignment.center,
-      child: const Icon(Icons.qr_code_2, size: 72),
-    );
-  }
-}
-
-String _formatPrice(String value) {
-  return _formatNumber(_parsePrice(value));
+String _expiryText(DateTime? expiresAt) {
+  if (expiresAt == null) return 'Complete the transfer in the PayOS session';
+  final remaining = expiresAt.difference(DateTime.now());
+  if (remaining.isNegative) return 'Payment link expired';
+  final minutes = remaining.inMinutes;
+  final seconds = remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return 'Expires in $minutes:$seconds';
 }
 
 String _formatNumber(double number) {
@@ -363,37 +441,6 @@ String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 }
 
-class _SelectedServiceLine extends StatelessWidget {
-  final BookingServiceModel service;
-
-  const _SelectedServiceLine({required this.service});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              service.name,
-              style: const TextStyle(
-                color: Color(0xFF78828A),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Text(
-            '${_formatPrice(service.price)} VND',
-            style: const TextStyle(
-              color: Color(0xFF171725),
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+String _cleanError(Object error) {
+  return error.toString().replaceFirst('Exception: ', '');
 }
