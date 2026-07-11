@@ -52,6 +52,10 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
   void initState() {
     super.initState();
     payment = widget.payment;
+    debugPrint(
+      '[PAYOS][Flutter] qr-opened booking=${payment.bookingId} '
+      'order=${payment.orderCode} amount=${payment.amount}',
+    );
     statusTimer = Timer.periodic(
       const Duration(seconds: 3),
       (_) => checkPaymentStatus(),
@@ -61,6 +65,9 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
   @override
   void dispose() {
     statusTimer?.cancel();
+    debugPrint(
+      '[PAYOS][Flutter] qr-closed booking=${payment.bookingId} status=${payment.status}',
+    );
     super.dispose();
   }
 
@@ -68,15 +75,31 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
     if (isChecking || isPaid || isCancelled) return;
     isChecking = true;
     try {
+      final previousStatus = payment.status;
       final latest = await paymentController.getPayment(payment.bookingId);
       if (!mounted) return;
       setState(() {
         payment = latest;
         statusError = null;
       });
-      if (isPaid || isCancelled) statusTimer?.cancel();
+      if (latest.status != previousStatus) {
+        debugPrint(
+          '[PAYOS][Flutter] payment-status-changed booking=${latest.bookingId} '
+          '$previousStatus->${latest.status}',
+        );
+      }
+      if (isPaid || isCancelled) {
+        statusTimer?.cancel();
+        debugPrint(
+          '[PAYOS][Flutter] payment-terminal booking=${payment.bookingId} status=${payment.status}',
+        );
+      }
     } catch (error) {
       if (!mounted) return;
+      debugPrint(
+        '[PAYOS][Flutter] payment-status-error booking=${payment.bookingId} '
+        'message="${_cleanError(error)}"',
+      );
       setState(() => statusError = _cleanError(error));
     } finally {
       isChecking = false;

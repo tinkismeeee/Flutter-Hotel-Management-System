@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/const/api_endpoints.dart';
@@ -10,14 +11,23 @@ import '../../../core/models/user_model.dart';
 
 class PaymentController {
   Future<PromotionModel> validatePromotion(String code) async {
+    debugPrint('[PAYOS][Flutter] promotion-check code=${code.trim()}');
     final response = await http.get(
       Uri.parse(ApiEndpoints.promotionByCode(Uri.encodeComponent(code.trim()))),
     );
     final data = _decodeMap(response.body);
     if (response.statusCode != 200) {
-      throw Exception(_errorMessage(data, 'Invalid discount code'));
+      final message = _errorMessage(data, 'Invalid discount code');
+      debugPrint(
+        '[PAYOS][Flutter] promotion-rejected status=${response.statusCode} message="$message"',
+      );
+      throw Exception(message);
     }
-    return PromotionModel.fromJson(data);
+    final promotion = PromotionModel.fromJson(data);
+    debugPrint(
+      '[PAYOS][Flutter] promotion-applied code=${promotion.code} discount=${promotion.discountValue}% scope=${promotion.scope}',
+    );
+    return promotion;
   }
 
   Future<PayOsPaymentModel> createPayment({
@@ -29,6 +39,11 @@ class PaymentController {
     required List<BookingServiceModel> services,
     String? promotionCode,
   }) async {
+    debugPrint(
+      '[PAYOS][Flutter] payment-create room=${room.roomId} user=${user.userId} guests=$guests '
+      'checkIn=${checkIn.toIso8601String()} checkOut=${checkOut.toIso8601String()} '
+      'services=${services.length} promotion=${promotionCode ?? 'none'}',
+    );
     final response = await http.post(
       Uri.parse(ApiEndpoints.booking),
       headers: const {'Content-Type': 'application/json'},
@@ -47,20 +62,40 @@ class PaymentController {
     );
     final data = _decodeMap(response.body);
     if (response.statusCode != 201) {
-      throw Exception(_errorMessage(data, 'Cannot create payment'));
+      final message = _errorMessage(data, 'Cannot create payment');
+      debugPrint(
+        '[PAYOS][Flutter] payment-create-failed status=${response.statusCode} message="$message"',
+      );
+      throw Exception(message);
     }
-    return PayOsPaymentModel.fromJson(data);
+    final payment = PayOsPaymentModel.fromJson(data);
+    debugPrint(
+      '[PAYOS][Flutter] payment-created booking=${payment.bookingId} order=${payment.orderCode} '
+      'amount=${payment.amount} status=${payment.status}',
+    );
+    return payment;
   }
 
   Future<PayOsPaymentModel> getPayment(int bookingId) async {
+    debugPrint('[PAYOS][Flutter] payment-status-check booking=$bookingId');
     final response = await http.get(
       Uri.parse(ApiEndpoints.paymentByBooking(bookingId)),
     );
     final data = _decodeMap(response.body);
     if (response.statusCode != 200) {
-      throw Exception(_errorMessage(data, 'Cannot check payment status'));
+      final message = _errorMessage(data, 'Cannot check payment status');
+      debugPrint(
+        '[PAYOS][Flutter] payment-status-failed booking=$bookingId '
+        'status=${response.statusCode} message="$message"',
+      );
+      throw Exception(message);
     }
-    return PayOsPaymentModel.fromJson(data);
+    final payment = PayOsPaymentModel.fromJson(data);
+    debugPrint(
+      '[PAYOS][Flutter] payment-status-result booking=${payment.bookingId} '
+      'order=${payment.orderCode} status=${payment.status}',
+    );
+    return payment;
   }
 }
 
