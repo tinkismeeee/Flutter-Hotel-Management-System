@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../const/api_endpoints.dart';
+import '../network/api_client.dart';
 
 class UserModel {
   static const _currentUserKey = 'current_user';
@@ -42,8 +42,7 @@ class UserModel {
       userId: json['user_id']?.toString() ?? '',
       username: json['username']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
-      password:
-          (json['password'] ?? json['password_hash'])?.toString() ?? '',
+      password: (json['password'] ?? json['password_hash'])?.toString() ?? '',
       firstName: json['first_name']?.toString() ?? '',
       lastName: json['last_name']?.toString() ?? '',
       phone: json['phone_number']?.toString() ?? '',
@@ -71,7 +70,7 @@ class UserModel {
   }
 
   static Future<List<UserModel>> fetchAllUsers() async {
-    final response = await http.get(Uri.parse(ApiEndpoints.customer));
+    final response = await apiClient.get(Uri.parse(ApiEndpoints.customer));
 
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body);

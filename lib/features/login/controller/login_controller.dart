@@ -1,9 +1,8 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-
 import '../../../core/const/api_endpoints.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/network/api_client.dart';
 
 class LoginController {
   Future<UserModel> login({
@@ -11,7 +10,7 @@ class LoginController {
     required String password,
     required bool rememberPassword,
   }) async {
-    final response = await http.post(
+    final response = await apiClient.post(
       Uri.parse(ApiEndpoints.customerLogin),
       headers: const {'Content-Type': 'application/json'},
       body: json.encode({'email': email, 'password': password}),

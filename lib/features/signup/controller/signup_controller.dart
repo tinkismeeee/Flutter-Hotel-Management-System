@@ -1,9 +1,8 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-
 import '../../../core/const/api_endpoints.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/network/api_client.dart';
 
 class SignupController {
   Future<UserModel> signup({
@@ -27,7 +26,7 @@ class SignupController {
       throw Exception('Username already exists');
     }
 
-    final response = await http.post(
+    final response = await apiClient.post(
       Uri.parse(ApiEndpoints.customer),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({

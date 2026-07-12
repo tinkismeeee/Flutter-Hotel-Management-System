@@ -1,13 +1,12 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-
 import '../../../core/const/api_endpoints.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/network/api_client.dart';
 
 class ForgotPasswordController {
   Future<UserModel> findUserByEmail(String email) async {
-    final response = await http.get(
+    final response = await apiClient.get(
       Uri.parse(ApiEndpoints.customerByEmail(Uri.encodeComponent(email))),
     );
 
@@ -25,7 +24,7 @@ class ForgotPasswordController {
     required UserModel user,
     required String password,
   }) async {
-    final response = await http.put(
+    final response = await apiClient.put(
       Uri.parse(ApiEndpoints.customerUpdatePassword),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({'email': user.email, 'newPassword': password}),

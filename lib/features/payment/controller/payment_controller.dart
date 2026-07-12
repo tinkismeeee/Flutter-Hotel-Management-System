@@ -1,18 +1,18 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
 import '../../../core/const/api_endpoints.dart';
 import '../../../core/models/booking_service_model.dart';
 import '../../../core/models/payos_payment_model.dart';
 import '../../../core/models/room_model.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/network/api_client.dart';
 
 class PaymentController {
   Future<PromotionModel> validatePromotion(String code) async {
     debugPrint('[PAYOS][Flutter] promotion-check code=${code.trim()}');
-    final response = await http.get(
+    final response = await apiClient.get(
       Uri.parse(ApiEndpoints.promotionByCode(Uri.encodeComponent(code.trim()))),
     );
     final data = _decodeMap(response.body);
@@ -44,7 +44,7 @@ class PaymentController {
       'checkIn=${checkIn.toIso8601String()} checkOut=${checkOut.toIso8601String()} '
       'services=${services.length} promotion=${promotionCode ?? 'none'}',
     );
-    final response = await http.post(
+    final response = await apiClient.post(
       Uri.parse(ApiEndpoints.booking),
       headers: const {'Content-Type': 'application/json'},
       body: json.encode({
@@ -78,7 +78,7 @@ class PaymentController {
 
   Future<PayOsPaymentModel> getPayment(int bookingId) async {
     debugPrint('[PAYOS][Flutter] payment-status-check booking=$bookingId');
-    final response = await http.get(
+    final response = await apiClient.get(
       Uri.parse(ApiEndpoints.paymentByBooking(bookingId)),
     );
     final data = _decodeMap(response.body);

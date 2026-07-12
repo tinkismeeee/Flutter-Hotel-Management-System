@@ -4,7 +4,7 @@ class ApiEndpoints {
   static const String unsplashRooms =
       "$unsplashBaseUrl/search/photos/?client_id=$clientId&query=room&per_page=30";
   static const String baseUrl =
-      "https://f8d6-2405-4802-9178-8880-3513-c791-3c94-d53a.ngrok-free.app/api";
+      "https://nationally-amused-horse.ngrok-free.app/api";
   static const String customer = "$baseUrl/customers";
   static const String customerUpdatePassword = "$customer/update-password";
   static const String room = "$baseUrl/rooms";
@@ -23,4 +23,6 @@ class ApiEndpoints {
   static String paymentByBooking(int bookingId) =>
       "$payment/booking/$bookingId";
   static String reviewsByRoom(int roomId) => "$review/room/$roomId";
+  static String reviewEligibility({required int userId, required int roomId}) =>
+      "$review/eligibility?userId=$userId&roomId=$roomId";
 }

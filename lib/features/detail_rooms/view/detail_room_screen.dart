@@ -2,13 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 
 import '../../../core/const/api_endpoints.dart';
 import '../../../core/models/booking_service_model.dart';
 import '../../../core/models/room_model.dart';
 import '../../../core/models/room_review_model.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/colors.dart';
 import '../../payment/view/payment_confirmation_screen.dart';
 
@@ -42,6 +42,7 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
     final services = await fetchServices();
     final roomTypes = await fetchRoomTypes();
     final reviews = await fetchReviews();
+    final eligibleBookingId = await fetchEligibleBookingId();
     final roomTypeName = room.roomTypeName.isNotEmpty
         ? room.roomTypeName
         : roomTypes[room.roomTypeId] ?? '';
@@ -50,11 +51,12 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
       roomTypeName: roomTypeName,
       services: services,
       reviews: reviews,
+      eligibleBookingId: eligibleBookingId,
     );
   }
 
   Future<RoomModel> fetchRoomDetail() async {
-    final response = await http.get(
+    final response = await apiClient.get(
       Uri.parse('${ApiEndpoints.room}/${widget.roomId}'),
     );
 
@@ -74,7 +76,7 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
 
   Future<List<BookingServiceModel>> fetchServices() async {
     try {
-      final response = await http.get(Uri.parse(ApiEndpoints.service));
+      final response = await apiClient.get(Uri.parse(ApiEndpoints.service));
       if (response.statusCode != 200) return _fallbackServices;
 
       final jsonData = json.decode(response.body);
@@ -99,7 +101,7 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
 
   Future<Map<int, String>> fetchRoomTypes() async {
     try {
-      final response = await http.get(Uri.parse(ApiEndpoints.roomTypes));
+      final response = await apiClient.get(Uri.parse(ApiEndpoints.roomTypes));
       if (response.statusCode != 200) return const {};
 
       final jsonData = json.decode(response.body);
@@ -122,7 +124,7 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
 
   Future<List<RoomReviewModel>> fetchReviews() async {
     try {
-      final response = await http.get(
+      final response = await apiClient.get(
         Uri.parse(ApiEndpoints.reviewsByRoom(widget.roomId)),
       );
       if (response.statusCode != 200) return const [];
@@ -141,6 +143,28 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
           .toList();
     } catch (_) {
       return const [];
+    }
+  }
+
+  Future<int?> fetchEligibleBookingId() async {
+    final userId = int.tryParse(widget.user.userId);
+    if (userId == null) return null;
+
+    try {
+      final response = await apiClient.get(
+        Uri.parse(
+          ApiEndpoints.reviewEligibility(userId: userId, roomId: widget.roomId),
+        ),
+      );
+      if (response.statusCode != 200) return null;
+
+      final jsonData = json.decode(response.body);
+      if (jsonData is! Map<String, dynamic> || jsonData['eligible'] != true) {
+        return null;
+      }
+      return int.tryParse(jsonData['booking_id']?.toString() ?? '');
+    } catch (_) {
+      return null;
     }
   }
 
@@ -180,6 +204,7 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
             roomTypeName: snapshot.data!.roomTypeName,
             services: snapshot.data!.services,
             reviews: snapshot.data!.reviews,
+            eligibleBookingId: snapshot.data!.eligibleBookingId,
             imageUrl: widget.imageUrl,
             user: widget.user,
           );
@@ -194,12 +219,14 @@ class _DetailData {
   final String roomTypeName;
   final List<BookingServiceModel> services;
   final List<RoomReviewModel> reviews;
+  final int? eligibleBookingId;
 
   const _DetailData({
     required this.room,
     required this.roomTypeName,
     required this.services,
     required this.reviews,
+    required this.eligibleBookingId,
   });
 }
 
@@ -208,6 +235,7 @@ class _DetailBody extends StatefulWidget {
   final String roomTypeName;
   final List<BookingServiceModel> services;
   final List<RoomReviewModel> reviews;
+  final int? eligibleBookingId;
   final String? imageUrl;
   final UserModel user;
 
@@ -216,6 +244,7 @@ class _DetailBody extends StatefulWidget {
     required this.roomTypeName,
     required this.services,
     required this.reviews,
+    required this.eligibleBookingId,
     required this.imageUrl,
     required this.user,
   });
@@ -303,7 +332,12 @@ class _DetailBodyState extends State<_DetailBody> {
             ),
           ),
           const SizedBox(height: 26),
-          _ReviewsSection(reviews: widget.reviews),
+          _ReviewsSection(
+            reviews: widget.reviews,
+            eligibleBookingId: widget.eligibleBookingId,
+            roomId: widget.room.roomId,
+            user: widget.user,
+          ),
           const SizedBox(height: 26),
           const _SectionTitle(title: 'Add-on services'),
           const SizedBox(height: 12),
@@ -415,10 +449,44 @@ class _DetailBodyState extends State<_DetailBody> {
   }
 }
 
-class _ReviewsSection extends StatelessWidget {
+class _ReviewsSection extends StatefulWidget {
   final List<RoomReviewModel> reviews;
+  final int? eligibleBookingId;
+  final int roomId;
+  final UserModel user;
 
-  const _ReviewsSection({required this.reviews});
+  const _ReviewsSection({
+    required this.reviews,
+    required this.eligibleBookingId,
+    required this.roomId,
+    required this.user,
+  });
+
+  @override
+  State<_ReviewsSection> createState() => _ReviewsSectionState();
+}
+
+class _ReviewsSectionState extends State<_ReviewsSection> {
+  final commentController = TextEditingController();
+  late List<RoomReviewModel> reviews;
+  late int? eligibleBookingId;
+  int selectedRating = 0;
+  bool showComposer = false;
+  bool isSubmitting = false;
+  String? submitError;
+
+  @override
+  void initState() {
+    super.initState();
+    reviews = List.of(widget.reviews);
+    eligibleBookingId = widget.eligibleBookingId;
+  }
+
+  @override
+  void dispose() {
+    commentController.dispose();
+    super.dispose();
+  }
 
   double get averageRating {
     if (reviews.isEmpty) return 0;
@@ -431,8 +499,40 @@ class _ReviewsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(title: 'Guest reviews'),
+        Row(
+          children: [
+            const Expanded(child: _SectionTitle(title: 'Guest reviews')),
+            if (eligibleBookingId != null && !showComposer)
+              TextButton.icon(
+                onPressed: () => setState(() => showComposer = true),
+                icon: const Icon(Icons.rate_review_outlined, size: 19),
+                label: const Text('Write a review'),
+              ),
+          ],
+        ),
         const SizedBox(height: 12),
+        if (showComposer) ...[
+          _ReviewComposer(
+            rating: selectedRating,
+            commentController: commentController,
+            isSubmitting: isSubmitting,
+            errorText: submitError,
+            onRatingChanged: (rating) {
+              setState(() {
+                selectedRating = rating;
+                submitError = null;
+              });
+            },
+            onCancel: () {
+              setState(() {
+                showComposer = false;
+                submitError = null;
+              });
+            },
+            onSubmit: submitReview,
+          ),
+          const SizedBox(height: 14),
+        ],
         if (reviews.isEmpty)
           const _EmptyReviews()
         else ...[
@@ -449,6 +549,180 @@ class _ReviewsSection extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+
+  Future<void> submitReview() async {
+    final bookingId = eligibleBookingId;
+    final userId = int.tryParse(widget.user.userId);
+    final comment = commentController.text.trim();
+
+    if (selectedRating == 0) {
+      setState(() => submitError = 'Please select a rating');
+      return;
+    }
+    if (comment.isEmpty) {
+      setState(() => submitError = 'Please share your experience');
+      return;
+    }
+    if (bookingId == null || userId == null || isSubmitting) return;
+
+    setState(() {
+      isSubmitting = true;
+      submitError = null;
+    });
+
+    try {
+      final response = await apiClient.post(
+        Uri.parse(ApiEndpoints.review),
+        headers: const {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': userId,
+          'room_id': widget.roomId,
+          'booking_id': bookingId,
+          'rating': selectedRating,
+          'comment': comment,
+        }),
+      );
+
+      final jsonData = json.decode(response.body);
+      if (response.statusCode != 201 || jsonData is! Map<String, dynamic>) {
+        throw Exception(_reviewResponseMessage(jsonData));
+      }
+
+      final review = RoomReviewModel.fromJson(jsonData);
+      if (!mounted) return;
+      setState(() {
+        reviews.insert(0, review);
+        eligibleBookingId = null;
+        showComposer = false;
+        selectedRating = 0;
+        commentController.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thank you for your review')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(
+        () => submitError = error.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) setState(() => isSubmitting = false);
+    }
+  }
+}
+
+class _ReviewComposer extends StatelessWidget {
+  final int rating;
+  final TextEditingController commentController;
+  final bool isSubmitting;
+  final String? errorText;
+  final ValueChanged<int> onRatingChanged;
+  final VoidCallback onCancel;
+  final VoidCallback onSubmit;
+
+  const _ReviewComposer({
+    required this.rating,
+    required this.commentController,
+    required this.isSubmitting,
+    required this.errorText,
+    required this.onRatingChanged,
+    required this.onCancel,
+    required this.onSubmit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'How was your stay?',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: List.generate(5, (index) {
+              final value = index + 1;
+              return IconButton(
+                onPressed: isSubmitting ? null : () => onRatingChanged(value),
+                tooltip: '$value star${value > 1 ? 's' : ''}',
+                constraints: const BoxConstraints.tightFor(
+                  width: 42,
+                  height: 42,
+                ),
+                padding: EdgeInsets.zero,
+                icon: Icon(
+                  value <= rating
+                      ? Icons.star_rounded
+                      : Icons.star_outline_rounded,
+                  color: AppColors.warning,
+                  size: 30,
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: commentController,
+            enabled: !isSubmitting,
+            minLines: 3,
+            maxLines: 5,
+            maxLength: 1000,
+            decoration: const InputDecoration(
+              labelText: 'Your review',
+              hintText: 'Share what you liked about this room',
+              alignLabelWithHint: true,
+            ),
+          ),
+          if (errorText != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              errorText!,
+              style: const TextStyle(
+                color: AppColors.danger,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: isSubmitting ? null : onCancel,
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: isSubmitting ? null : onSubmit,
+                icon: isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send_outlined, size: 18),
+                label: const Text('Submit review'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1266,6 +1540,14 @@ String _formatReviewDate(DateTime date) {
     'Dec',
   ];
   return '${months[date.month - 1]} ${date.day}, ${date.year}';
+}
+
+String _reviewResponseMessage(dynamic jsonData) {
+  if (jsonData is Map<String, dynamic>) {
+    return (jsonData['message'] ?? jsonData['error'])?.toString() ??
+        'Unable to submit review';
+  }
+  return 'Unable to submit review';
 }
 
 int _roomTypeId(Map<String, dynamic> json) {

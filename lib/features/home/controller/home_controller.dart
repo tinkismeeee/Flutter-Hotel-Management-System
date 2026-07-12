@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/const/api_endpoints.dart';
 import '../../../core/models/room_model.dart';
 import '../../../core/models/unsplash_room_model.dart';
+import '../../../core/network/api_client.dart';
 
 class HomeData {
   final List<RoomModel> rooms;
@@ -22,7 +23,7 @@ class HomeController {
   }
 
   Future<List<RoomModel>> fetchRooms() async {
-    final response = await http.get(Uri.parse(ApiEndpoints.room));
+    final response = await apiClient.get(Uri.parse(ApiEndpoints.room));
 
     if (response.statusCode != 200) {
       throw Exception('Failed to fetch rooms: ${response.statusCode}');
