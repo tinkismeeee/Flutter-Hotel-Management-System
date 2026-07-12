@@ -109,7 +109,7 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pay with PayOS')),
+      appBar: AppBar(title: const Text('Payment')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         child: Column(

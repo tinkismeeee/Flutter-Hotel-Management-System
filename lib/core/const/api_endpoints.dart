@@ -25,4 +25,5 @@ class ApiEndpoints {
   static String reviewsByRoom(int roomId) => "$review/room/$roomId";
   static String reviewEligibility({required int userId, required int roomId}) =>
       "$review/eligibility?userId=$userId&roomId=$roomId";
+  static String bookingsByUser(int userId) => "$booking/user/$userId";
 }
