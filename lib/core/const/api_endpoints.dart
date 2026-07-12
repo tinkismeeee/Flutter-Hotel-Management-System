@@ -22,4 +22,5 @@ class ApiEndpoints {
   static String promotionByCode(String code) => "$promotion/code/$code";
   static String paymentByBooking(int bookingId) =>
       "$payment/booking/$bookingId";
+  static String reviewsByRoom(int roomId) => "$review/room/$roomId";
 }

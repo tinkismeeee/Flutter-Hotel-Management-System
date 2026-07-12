@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/const/api_endpoints.dart';
 import '../../../core/models/booking_service_model.dart';
 import '../../../core/models/room_model.dart';
+import '../../../core/models/room_review_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/theme/colors.dart';
 import '../../payment/view/payment_confirmation_screen.dart';
@@ -40,6 +41,7 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
     final room = await fetchRoomDetail();
     final services = await fetchServices();
     final roomTypes = await fetchRoomTypes();
+    final reviews = await fetchReviews();
     final roomTypeName = room.roomTypeName.isNotEmpty
         ? room.roomTypeName
         : roomTypes[room.roomTypeId] ?? '';
@@ -47,6 +49,7 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
       room: room,
       roomTypeName: roomTypeName,
       services: services,
+      reviews: reviews,
     );
   }
 
@@ -117,6 +120,30 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
     }
   }
 
+  Future<List<RoomReviewModel>> fetchReviews() async {
+    try {
+      final response = await http.get(
+        Uri.parse(ApiEndpoints.reviewsByRoom(widget.roomId)),
+      );
+      if (response.statusCode != 200) return const [];
+
+      final jsonData = json.decode(response.body);
+      final reviewsJson = switch (jsonData) {
+        {'data': List data} => data,
+        {'results': List data} => data,
+        List data => data,
+        _ => const [],
+      };
+
+      return reviewsJson
+          .whereType<Map<String, dynamic>>()
+          .map(RoomReviewModel.fromJson)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -152,6 +179,7 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
             room: snapshot.data!.room,
             roomTypeName: snapshot.data!.roomTypeName,
             services: snapshot.data!.services,
+            reviews: snapshot.data!.reviews,
             imageUrl: widget.imageUrl,
             user: widget.user,
           );
@@ -165,11 +193,13 @@ class _DetailData {
   final RoomModel room;
   final String roomTypeName;
   final List<BookingServiceModel> services;
+  final List<RoomReviewModel> reviews;
 
   const _DetailData({
     required this.room,
     required this.roomTypeName,
     required this.services,
+    required this.reviews,
   });
 }
 
@@ -177,6 +207,7 @@ class _DetailBody extends StatefulWidget {
   final RoomModel room;
   final String roomTypeName;
   final List<BookingServiceModel> services;
+  final List<RoomReviewModel> reviews;
   final String? imageUrl;
   final UserModel user;
 
@@ -184,6 +215,7 @@ class _DetailBody extends StatefulWidget {
     required this.room,
     required this.roomTypeName,
     required this.services,
+    required this.reviews,
     required this.imageUrl,
     required this.user,
   });
@@ -270,6 +302,8 @@ class _DetailBodyState extends State<_DetailBody> {
               fontWeight: FontWeight.w500,
             ),
           ),
+          const SizedBox(height: 26),
+          _ReviewsSection(reviews: widget.reviews),
           const SizedBox(height: 26),
           const _SectionTitle(title: 'Add-on services'),
           const SizedBox(height: 12),
@@ -378,6 +412,234 @@ class _DetailBodyState extends State<_DetailBody> {
         guestError = null;
       }
     });
+  }
+}
+
+class _ReviewsSection extends StatelessWidget {
+  final List<RoomReviewModel> reviews;
+
+  const _ReviewsSection({required this.reviews});
+
+  double get averageRating {
+    if (reviews.isEmpty) return 0;
+    final total = reviews.fold<int>(0, (sum, review) => sum + review.rating);
+    return total / reviews.length;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle(title: 'Guest reviews'),
+        const SizedBox(height: 12),
+        if (reviews.isEmpty)
+          const _EmptyReviews()
+        else ...[
+          _ReviewSummary(
+            averageRating: averageRating,
+            reviewCount: reviews.length,
+          ),
+          const SizedBox(height: 14),
+          ...reviews.map(
+            (review) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _ReviewTile(review: review),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ReviewSummary extends StatelessWidget {
+  final double averageRating;
+  final int reviewCount;
+
+  const _ReviewSummary({
+    required this.averageRating,
+    required this.reviewCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Text(
+            averageRating.toStringAsFixed(1),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _RatingStars(rating: averageRating),
+                const SizedBox(height: 5),
+                Text(
+                  '$reviewCount verified review${reviewCount > 1 ? 's' : ''}',
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewTile extends StatelessWidget {
+  final RoomReviewModel review;
+
+  const _ReviewTile({required this.review});
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = review.reviewerName.characters.first.toUpperCase();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.10),
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      review.reviewerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (review.createdAt != null)
+                      Text(
+                        _formatReviewDate(review.createdAt!),
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              _RatingStars(rating: review.rating.toDouble(), compact: true),
+            ],
+          ),
+          if (review.comment.trim().isNotEmpty) ...[
+            const SizedBox(height: 13),
+            Text(
+              review.comment,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+                height: 1.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RatingStars extends StatelessWidget {
+  final double rating;
+  final bool compact;
+
+  const _RatingStars({required this.rating, this.compact = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        final value = index + 1;
+        final icon = rating >= value
+            ? Icons.star_rounded
+            : rating >= value - 0.5
+            ? Icons.star_half_rounded
+            : Icons.star_outline_rounded;
+        return Icon(icon, size: compact ? 16 : 20, color: AppColors.warning);
+      }),
+    );
+  }
+}
+
+class _EmptyReviews extends StatelessWidget {
+  const _EmptyReviews();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.rate_review_outlined, color: AppColors.textMuted),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'No reviews yet for this room.',
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -986,6 +1248,24 @@ double _parsePrice(String value) => double.tryParse(value) ?? 0;
 
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
+
+String _formatReviewDate(DateTime date) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${months[date.month - 1]} ${date.day}, ${date.year}';
 }
 
 int _roomTypeId(Map<String, dynamic> json) {
