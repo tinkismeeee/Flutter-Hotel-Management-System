@@ -142,7 +142,7 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
   Future<void> pickDay() async {
     final date = await showDatePicker(
       context: context,
-      initialDate: selectedDate ?? DateTime(2026, 4, 22),
+      initialDate: selectedDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2035),
     );
@@ -161,8 +161,9 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
     showModalBottomSheet(
       context: context,
       builder: (_) {
-        int tempMonth = selectedMonth ?? 4;
-        int tempYear = selectedYear ?? 2026;
+        final now = DateTime.now();
+        int tempMonth = selectedMonth ?? now.month;
+        int tempYear = selectedYear ?? now.year;
 
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -173,10 +174,7 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
                 children: [
                   const Text(
                     'Chọn tháng',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
                   DropdownButton<int>(
@@ -184,7 +182,7 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
                     isExpanded: true,
                     items: List.generate(
                       12,
-                          (index) => DropdownMenuItem(
+                      (index) => DropdownMenuItem(
                         value: index + 1,
                         child: Text('Tháng ${index + 1}'),
                       ),
@@ -198,16 +196,13 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
                   DropdownButton<int>(
                     value: tempYear,
                     isExpanded: true,
-                    items: List.generate(
-                      10,
-                          (index) {
-                        final year = 2024 + index;
-                        return DropdownMenuItem(
-                          value: year,
-                          child: Text('Năm $year'),
-                        );
-                      },
-                    ),
+                    items: List.generate(10, (index) {
+                      final year = 2024 + index;
+                      return DropdownMenuItem(
+                        value: year,
+                        child: Text('Năm $year'),
+                      );
+                    }),
                     onChanged: (value) {
                       setModalState(() {
                         tempYear = value ?? 2026;
@@ -240,7 +235,7 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
     showModalBottomSheet(
       context: context,
       builder: (_) {
-        int tempYear = selectedYear ?? 2026;
+        int tempYear = selectedYear ?? DateTime.now().year;
 
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -251,25 +246,19 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
                 children: [
                   const Text(
                     'Chọn năm',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
                   DropdownButton<int>(
                     value: tempYear,
                     isExpanded: true,
-                    items: List.generate(
-                      10,
-                          (index) {
-                        final year = 2024 + index;
-                        return DropdownMenuItem(
-                          value: year,
-                          child: Text('Năm $year'),
-                        );
-                      },
-                    ),
+                    items: List.generate(10, (index) {
+                      final year = 2024 + index;
+                      return DropdownMenuItem(
+                        value: year,
+                        child: Text('Năm $year'),
+                      );
+                    }),
                     onChanged: (value) {
                       setModalState(() {
                         tempYear = value ?? 2026;
@@ -483,11 +472,7 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
               color: AppColors.gold.withOpacity(0.16),
               borderRadius: BorderRadius.circular(18),
             ),
-            child: Icon(
-              icon,
-              color: AppColors.gold,
-              size: 28,
-            ),
+            child: Icon(icon, color: AppColors.gold, size: 28),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -664,25 +649,22 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
                     ),
                   ),
                 ),
-                barGroups: List.generate(
-                  12,
-                      (index) {
-                    final month = index + 1;
-                    final value = data[month] ?? 0;
+                barGroups: List.generate(12, (index) {
+                  final month = index + 1;
+                  final value = data[month] ?? 0;
 
-                    return BarChartGroupData(
-                      x: month,
-                      barRods: [
-                        BarChartRodData(
-                          toY: value,
-                          width: 13,
-                          borderRadius: BorderRadius.circular(8),
-                          color: const Color(0xFF13BFD6),
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                  return BarChartGroupData(
+                    x: month,
+                    barRods: [
+                      BarChartRodData(
+                        toY: value,
+                        width: 13,
+                        borderRadius: BorderRadius.circular(8),
+                        color: const Color(0xFF13BFD6),
+                      ),
+                    ],
+                  );
+                }),
               ),
             ),
           ),
@@ -728,59 +710,58 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
           Expanded(
             child: total == 0
                 ? const Center(
-              child: Text(
-                'Không có dữ liệu',
-                style: TextStyle(color: AppColors.textGray),
-              ),
-            )
-                : Row(
-              children: [
-                Expanded(
-                  child: PieChart(
-                    PieChartData(
-                      centerSpaceRadius: 34,
-                      sectionsSpace: 2,
-                      sections: [
-                        PieChartSectionData(
-                          value: roomRevenue,
-                          title: '${roomPercent.toStringAsFixed(0)}%',
-                          radius: 58,
-                          color: const Color(0xFF0F8BFF),
-                        ),
-                        PieChartSectionData(
-                          value: serviceRevenue,
-                          title:
-                          '${servicePercent.toStringAsFixed(0)}%',
-                          radius: 58,
-                          color: const Color(0xFF11C5A8),
-                        ),
-                      ],
+                    child: Text(
+                      'Không có dữ liệu',
+                      style: TextStyle(color: AppColors.textGray),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  )
+                : Row(
                     children: [
-                      legendItem(
-                        color: const Color(0xFF0F8BFF),
-                        title: 'Doanh thu phòng',
-                        value:
-                        '${compactMoney(roomRevenue)} (${roomPercent.toStringAsFixed(0)}%)',
+                      Expanded(
+                        child: PieChart(
+                          PieChartData(
+                            centerSpaceRadius: 34,
+                            sectionsSpace: 2,
+                            sections: [
+                              PieChartSectionData(
+                                value: roomRevenue,
+                                title: '${roomPercent.toStringAsFixed(0)}%',
+                                radius: 58,
+                                color: const Color(0xFF0F8BFF),
+                              ),
+                              PieChartSectionData(
+                                value: serviceRevenue,
+                                title: '${servicePercent.toStringAsFixed(0)}%',
+                                radius: 58,
+                                color: const Color(0xFF11C5A8),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 16),
-                      legendItem(
-                        color: const Color(0xFF11C5A8),
-                        title: 'Doanh thu dịch vụ',
-                        value:
-                        '${compactMoney(serviceRevenue)} (${servicePercent.toStringAsFixed(0)}%)',
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            legendItem(
+                              color: const Color(0xFF0F8BFF),
+                              title: 'Doanh thu phòng',
+                              value:
+                                  '${compactMoney(roomRevenue)} (${roomPercent.toStringAsFixed(0)}%)',
+                            ),
+                            const SizedBox(height: 16),
+                            legendItem(
+                              color: const Color(0xFF11C5A8),
+                              title: 'Doanh thu dịch vụ',
+                              value:
+                                  '${compactMoney(serviceRevenue)} (${servicePercent.toStringAsFixed(0)}%)',
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -799,10 +780,7 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
         Expanded(
           child: Text(
             '$title\n$value',
-            style: const TextStyle(
-              color: AppColors.textGray,
-              height: 1.35,
-            ),
+            style: const TextStyle(color: AppColors.textGray, height: 1.35),
           ),
         ),
       ],
@@ -910,9 +888,7 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.gold,
-                      ),
+                      child: CircularProgressIndicator(color: AppColors.gold),
                     );
                   }
 

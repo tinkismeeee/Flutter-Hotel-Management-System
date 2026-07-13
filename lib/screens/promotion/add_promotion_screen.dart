@@ -42,7 +42,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
 
     if (date != null) {
       controller.text =
-      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     }
   }
 
@@ -54,9 +54,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
         endDateController.text.trim().isEmpty ||
         descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đầy đủ thông tin'),
-        ),
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin')),
       );
       return;
     }
@@ -85,9 +83,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          success
-              ? 'Thêm khuyến mãi thành công'
-              : 'Thêm khuyến mãi thất bại',
+          success ? 'Thêm khuyến mãi thành công' : 'Thêm khuyến mãi thất bại',
         ),
       ),
     );
@@ -96,13 +92,13 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
   }
 
   Widget inputField(
-      String label,
-      TextEditingController controller, {
-        TextInputType type = TextInputType.text,
-        bool readOnly = false,
-        VoidCallback? onTap,
-        int maxLines = 1,
-      }) {
+    String label,
+    TextEditingController controller, {
+    TextInputType type = TextInputType.text,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    int maxLines = 1,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       child: TextField(
@@ -122,10 +118,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(
-              color: AppColors.gold,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: AppColors.gold, width: 2),
           ),
         ),
       ),
@@ -145,6 +138,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
           value: scope,
           isExpanded: true,
           items: const [
+            DropdownMenuItem(value: 'all', child: Text('all')),
             DropdownMenuItem(value: 'invoice', child: Text('invoice')),
             DropdownMenuItem(value: 'room', child: Text('room')),
             DropdownMenuItem(value: 'service', child: Text('service')),
@@ -227,11 +221,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
 
                   scopeDropdown(),
 
-                  inputField(
-                    'Mô tả',
-                    descriptionController,
-                    maxLines: 4,
-                  ),
+                  inputField('Mô tả', descriptionController, maxLines: 4),
 
                   SwitchListTile(
                     value: isActive,
@@ -263,9 +253,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
                       ),
                     ),
                     child: Text(
-                      isLoading
-                          ? 'Đang thêm...'
-                          : 'Thêm khuyến mãi',
+                      isLoading ? 'Đang thêm...' : 'Thêm khuyến mãi',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

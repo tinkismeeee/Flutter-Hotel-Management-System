@@ -6,10 +6,7 @@ import '../../utils/app_colors.dart';
 class EditPromotionScreen extends StatefulWidget {
   final Promotion promotion;
 
-  const EditPromotionScreen({
-    super.key,
-    required this.promotion,
-  });
+  const EditPromotionScreen({super.key, required this.promotion});
 
   @override
   State<EditPromotionScreen> createState() => _EditPromotionScreenState();
@@ -74,7 +71,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
 
     if (date != null) {
       controller.text =
-      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     }
   }
 
@@ -85,9 +82,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
         endDateController.text.trim().isEmpty ||
         descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đầy đủ thông tin'),
-        ),
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin')),
       );
       return;
     }
@@ -127,13 +122,13 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
   }
 
   Widget inputField(
-      String label,
-      TextEditingController controller, {
-        TextInputType type = TextInputType.text,
-        bool readOnly = false,
-        VoidCallback? onTap,
-        int maxLines = 1,
-      }) {
+    String label,
+    TextEditingController controller, {
+    TextInputType type = TextInputType.text,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    int maxLines = 1,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       child: TextField(
@@ -153,10 +148,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(
-              color: AppColors.gold,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: AppColors.gold, width: 2),
           ),
         ),
       ),
@@ -176,6 +168,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
           value: scope,
           isExpanded: true,
           items: const [
+            DropdownMenuItem(value: 'all', child: Text('all')),
             DropdownMenuItem(value: 'invoice', child: Text('invoice')),
             DropdownMenuItem(value: 'room', child: Text('room')),
             DropdownMenuItem(value: 'service', child: Text('service')),
@@ -274,11 +267,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
 
                   scopeDropdown(),
 
-                  inputField(
-                    'Mô tả',
-                    descriptionController,
-                    maxLines: 4,
-                  ),
+                  inputField('Mô tả', descriptionController, maxLines: 4),
 
                   SwitchListTile(
                     value: isActive,
@@ -310,9 +299,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
                       ),
                     ),
                     child: Text(
-                      isLoading
-                          ? 'Đang cập nhật...'
-                          : 'Cập nhật khuyến mãi',
+                      isLoading ? 'Đang cập nhật...' : 'Cập nhật khuyến mãi',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
