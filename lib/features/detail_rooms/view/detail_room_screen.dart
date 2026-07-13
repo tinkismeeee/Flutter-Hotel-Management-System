@@ -450,16 +450,21 @@ class _DetailBodyState extends State<_DetailBody> {
     );
   }
 
-  Future<void> bookNow() async {
+  void bookNow() {
+    if (stayRange == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Please select check-in and check-out dates'),
+          ),
+        );
+      return;
+    }
+
     validateGuests(guestController.text);
     if (guestError != null || widget.room.status != 'available') return;
 
-    if (stayRange == null) {
-      await pickStayRange();
-      if (!mounted || stayRange == null) return;
-    }
-
-    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => PaymentConfirmationScreen(
@@ -857,70 +862,79 @@ class _ReviewTile extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.10),
-                child: Text(
-                  initial,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      review.reviewerName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (review.createdAt != null)
-                      Text(
-                        _formatReviewDate(review.createdAt!),
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              _RatingStars(rating: review.rating.toDouble(), compact: true),
-            ],
-          ),
-          if (review.comment.trim().isNotEmpty) ...[
-            const SizedBox(height: 13),
-            Text(
-              review.comment,
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: AppColors.primary.withValues(alpha: 0.10),
+            child: Text(
+              initial,
               style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-                height: 1.5,
-                fontWeight: FontWeight.w500,
+                color: AppColors.primary,
+                fontSize: 16,
+                fontFamily: 'Plus Jakarta Sans',
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ],
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        review.reviewerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF171725),
+                          fontSize: 14,
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontWeight: FontWeight.w600,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 16,
+                      color: AppColors.warning,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      review.rating.toStringAsFixed(1),
+                      style: const TextStyle(
+                        color: Color(0xFF171725),
+                        fontSize: 12,
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+                if (review.comment.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    review.comment,
+                    style: const TextStyle(
+                      color: Color(0xFF9CA4AB),
+                      fontSize: 12,
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontWeight: FontWeight.w400,
+                      height: 1.8,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -929,9 +943,8 @@ class _ReviewTile extends StatelessWidget {
 
 class _RatingStars extends StatelessWidget {
   final double rating;
-  final bool compact;
 
-  const _RatingStars({required this.rating, this.compact = false});
+  const _RatingStars({required this.rating});
 
   @override
   Widget build(BuildContext context) {
@@ -944,7 +957,7 @@ class _RatingStars extends StatelessWidget {
             : rating >= value - 0.5
             ? Icons.star_half_rounded
             : Icons.star_outline_rounded;
-        return Icon(icon, size: compact ? 16 : 20, color: AppColors.warning);
+        return Icon(icon, size: 20, color: AppColors.warning);
       }),
     );
   }
@@ -1757,24 +1770,6 @@ double _parsePrice(String value) => double.tryParse(value) ?? 0;
 
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-}
-
-String _formatReviewDate(DateTime date) {
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  return '${months[date.month - 1]} ${date.day}, ${date.year}';
 }
 
 String _reviewResponseMessage(dynamic jsonData) {

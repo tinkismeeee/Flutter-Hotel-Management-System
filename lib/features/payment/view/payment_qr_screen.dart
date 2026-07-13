@@ -537,7 +537,7 @@ class _PaymentDetailsPanel extends StatelessWidget {
         children: [
           _InfoRow(label: 'Booking ID', value: '#${payment.bookingId}'),
           const SizedBox(height: 10),
-          _InfoRow(label: 'PayOS order', value: payment.orderCode.toString()),
+          _InfoRow(label: 'Order', value: payment.orderCode.toString()),
           const SizedBox(height: 10),
           _InfoRow(
             label: 'Payment status',
