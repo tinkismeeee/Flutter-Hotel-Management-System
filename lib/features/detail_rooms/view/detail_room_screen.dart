@@ -475,6 +475,7 @@ class _DetailBodyState extends State<_DetailBody> {
           stayRange: stayRange,
           nights: nights,
           guests: guestCount,
+          imageUrl: widget.imageUrl,
         ),
       ),
     );
