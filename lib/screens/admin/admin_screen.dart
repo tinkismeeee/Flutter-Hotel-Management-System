@@ -10,19 +10,23 @@ import '../revenue/revenue_dashboard_screen.dart';
 import '../customer/customer_list_screen.dart';
 
 class AdminScreen extends StatelessWidget {
-  const AdminScreen({super.key});
+  final Future<void> Function() onLogout;
+
+  const AdminScreen({super.key, required this.onLogout});
 
   void openScreen(BuildContext context, Widget screen) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => screen),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.navy,
+        foregroundColor: AppColors.gold,
+        title: const Text('Administration'),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -110,7 +114,10 @@ class AdminScreen extends StatelessWidget {
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1400),
                       child: GridView.count(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
                         crossAxisCount: crossAxisCount,
                         crossAxisSpacing: 18,
                         mainAxisSpacing: 18,
@@ -167,8 +174,15 @@ class AdminScreen extends StatelessWidget {
                           adminButton(
                             context,
                             title: 'Logout',
-                            icon: Icons.logout_rounded, // Đổi icon sang logout cho đúng nghĩa
-                            screen: const EmptyScreen(title: 'Logout'),
+                            icon: Icons
+                                .logout_rounded, // Đổi icon sang logout cho đúng nghĩa
+                            onTap: () async {
+                              await onLogout();
+                              if (!context.mounted) return;
+                              Navigator.of(
+                                context,
+                              ).popUntil((route) => route.isFirst);
+                            },
                           ),
                         ],
                       ),
@@ -184,14 +198,15 @@ class AdminScreen extends StatelessWidget {
   }
 
   Widget adminButton(
-      BuildContext context, {
-        required String title,
-        required IconData icon,
-        required Widget screen,
-      }) {
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    Widget? screen,
+    VoidCallback? onTap,
+  }) {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
-      onTap: () => openScreen(context, screen),
+      onTap: onTap ?? () => openScreen(context, screen!),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.card,
@@ -214,20 +229,18 @@ class AdminScreen extends StatelessWidget {
                 color: AppColors.gold.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(
-                icon,
-                color: AppColors.gold,
-                size: 28,
-              ),
+              child: Icon(icon, color: AppColors.gold, size: 28),
             ),
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
                 title,
-                textAlign: TextAlign.center, // Căn giữa chữ đề phòng tên danh mục dài
+                textAlign:
+                    TextAlign.center, // Căn giữa chữ đề phòng tên danh mục dài
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis, // Nếu chữ quá dài tự động thêm dấu "..." thay vì vỡ dòng
+                overflow: TextOverflow
+                    .ellipsis, // Nếu chữ quá dài tự động thêm dấu "..." thay vì vỡ dòng
                 style: const TextStyle(
                   color: AppColors.textDark,
                   fontSize: 15,
@@ -236,43 +249,6 @@ class AdminScreen extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class EmptyScreen extends StatelessWidget {
-  final String title;
-
-  const EmptyScreen({
-    super.key,
-    required this.title,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.navy,
-        iconTheme: const IconThemeData(color: AppColors.gold),
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.gold,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      body: Center(
-        child: Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.textDark,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
         ),
       ),
     );

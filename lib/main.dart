@@ -3,6 +3,7 @@ import 'features/home/view/home_screen.dart';
 import './features/login/view/login_screen.dart';
 import 'core/models/user_model.dart';
 import 'core/theme/app_theme.dart';
+import 'screens/admin/admin_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -24,11 +25,20 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  Future<void> clearSession() async {
+    await UserModel.clearCurrentUser();
+    if (!mounted) return;
+    setState(() {
+      sessionUser = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      routes: {'/admin': (_) => AdminScreen(onLogout: clearSession)},
       home: sessionUser != null
           ? HomeScreen(user: sessionUser!)
           : FutureBuilder<UserModel?>(
