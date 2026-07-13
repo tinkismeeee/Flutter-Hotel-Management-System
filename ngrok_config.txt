@@ -1,2 +1,2 @@
-https://f8d6-2405-4802-9178-8880-3513-c791-3c94-d53a.ngrok-free.app
-ngrok http 5000 --url https://f8d6-2405-4802-9178-8880-3513-c791-3c94-d53a.ngrok-free.app
+https://nationally-amused-horse.ngrok-free.app
+ngrok http 5000 --url https://nationally-amused-horse.ngrok-free.app

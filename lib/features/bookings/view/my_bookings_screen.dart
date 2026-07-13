@@ -123,6 +123,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         MaterialPageRoute(
           builder: (context) => PaymentQrScreen(
             room: booking.room,
+            user: widget.user,
             roomTypeName: booking.room.roomTypeName,
             stayRange: stayRange,
             nights: booking.numberOfNights > 0

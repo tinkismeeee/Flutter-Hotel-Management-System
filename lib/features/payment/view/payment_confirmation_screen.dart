@@ -213,6 +213,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         MaterialPageRoute(
           builder: (context) => PaymentQrScreen(
             room: widget.room,
+            user: widget.user,
             roomTypeName: widget.roomTypeName,
             services: widget.services,
             stayRange: widget.stayRange,

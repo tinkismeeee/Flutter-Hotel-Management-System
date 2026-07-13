@@ -59,12 +59,6 @@ class LoginController {
     }
     final user = UserModel.fromJson(userJson);
 
-    if (rememberPassword) {
-      await UserModel.saveCurrentUser(user);
-    } else {
-      await UserModel.clearCurrentUser();
-    }
-
     return user;
   }
 }

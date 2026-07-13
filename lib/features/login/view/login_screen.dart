@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/models/user_model.dart';
 import '../../forgot_password/view/forgot_password_screen.dart';
+import '../../otp/controller/otp_controller.dart';
+import '../../otp/view/otp_screen.dart';
 import '../../signup/view/signup_screen.dart';
 import '../controller/login_controller.dart';
 
@@ -17,6 +19,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final LoginController loginController = LoginController();
+  final OtpController otpController = OtpController();
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -60,8 +63,23 @@ class _LoginPageState extends State<LoginPage> {
         password: password,
         rememberPassword: rememberPassword,
       );
-      widget.onLoggedIn?.call(user);
-      debugPrint('Login successful for user: ${user.username}');
+      await otpController.sendOtp(user.email);
+
+      if (!mounted) return;
+      final isVerified = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (context) => OtpScreen(
+            user: user,
+            rememberPassword: rememberPassword,
+            controller: otpController,
+          ),
+        ),
+      );
+
+      if (isVerified == true) {
+        widget.onLoggedIn?.call(user);
+        debugPrint('Login successful for user: ${user.username}');
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() {
