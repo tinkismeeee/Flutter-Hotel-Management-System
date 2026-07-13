@@ -77,7 +77,7 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
   Future<List<BookingServiceModel>> fetchServices() async {
     try {
       final response = await apiClient.get(Uri.parse(ApiEndpoints.service));
-      if (response.statusCode != 200) return _fallbackServices;
+      if (response.statusCode != 200) return const [];
 
       final jsonData = json.decode(response.body);
       final servicesJson = switch (jsonData) {
@@ -93,9 +93,9 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
           .where((service) => service.availability)
           .toList();
 
-      return services.isEmpty ? _fallbackServices : services;
+      return services;
     } catch (_) {
-      return _fallbackServices;
+      return const [];
     }
   }
 
@@ -170,46 +170,40 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFEFEFE),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFEFEFE),
-        foregroundColor: const Color(0xFF171725),
-        elevation: 0,
-        title: const Text(
-          'Room details',
-          style: TextStyle(fontFamily: 'Jost', fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: FutureBuilder<_DetailData>(
-        future: detailFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return FutureBuilder<_DetailData>(
+      future: detailFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Room details')),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
 
-          if (snapshot.hasError) {
-            return _DetailError(
+        if (snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Room details')),
+            body: _DetailError(
               message: snapshot.error.toString(),
               onRetry: () {
                 setState(() {
                   detailFuture = fetchDetailData();
                 });
               },
-            );
-          }
-
-          return _DetailBody(
-            room: snapshot.data!.room,
-            roomTypeName: snapshot.data!.roomTypeName,
-            services: snapshot.data!.services,
-            reviews: snapshot.data!.reviews,
-            eligibleBookingId: snapshot.data!.eligibleBookingId,
-            imageUrl: widget.imageUrl,
-            user: widget.user,
+            ),
           );
-        },
-      ),
+        }
+
+        return _DetailBody(
+          room: snapshot.data!.room,
+          roomTypeName: snapshot.data!.roomTypeName,
+          services: snapshot.data!.services,
+          reviews: snapshot.data!.reviews,
+          eligibleBookingId: snapshot.data!.eligibleBookingId,
+          imageUrl: widget.imageUrl,
+          user: widget.user,
+        );
+      },
     );
   }
 }
@@ -258,13 +252,18 @@ class _DetailBodyState extends State<_DetailBody> {
   final guestController = TextEditingController(text: '1');
   DateTimeRange? stayRange;
   String? guestError;
+  bool descriptionExpanded = false;
 
   int get nights => stayRange?.duration.inDays ?? 1;
   int get guestCount => int.tryParse(guestController.text.trim()) ?? 0;
-  bool get canBook =>
-      widget.room.status == 'available' &&
-      stayRange != null &&
-      guestError == null;
+  double get averageRating {
+    if (widget.reviews.isEmpty) return 0;
+    final total = widget.reviews.fold<int>(
+      0,
+      (sum, review) => sum + review.rating,
+    );
+    return total / widget.reviews.length;
+  }
 
   double get totalPrice {
     final serviceTotal = widget.services
@@ -288,123 +287,190 @@ class _DetailBodyState extends State<_DetailBody> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _RoomHero(
-            room: widget.room,
-            roomTypeName: widget.roomTypeName,
-            imageUrl: widget.imageUrl,
+    final description = widget.room.description.trim();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFFEFEFE),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        leadingWidth: 76,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 20, top: 6, bottom: 6),
+          child: IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back),
           ),
-          const SizedBox(height: 18),
-          _RoomFacts(room: widget.room, roomTypeName: widget.roomTypeName),
-          const SizedBox(height: 24),
-          _StayPicker(
-            stayRange: stayRange,
-            nights: nights,
-            onTap: pickStayRange,
+        ),
+        title: const Text(
+          'Room Details',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontFamily: 'Jost',
+            fontWeight: FontWeight.w600,
           ),
-          const SizedBox(height: 16),
-          _GuestInput(
-            controller: guestController,
-            maxGuests: widget.room.maxGuests,
-            errorText: guestError,
-            onChanged: validateGuests,
-          ),
-          const SizedBox(height: 24),
-          _SectionTitle(
-            title: 'Description',
-            trailing: '${_formatPrice(widget.room.pricePerNight)} VND/night',
-          ),
-          const SizedBox(height: 10),
-          Text(
-            widget.room.description.isEmpty
-                ? 'No description available.'
-                : widget.room.description,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-              height: 1.55,
-              fontFamily: 'Jost',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 26),
-          _ReviewsSection(
-            reviews: widget.reviews,
-            eligibleBookingId: widget.eligibleBookingId,
-            roomId: widget.room.roomId,
-            user: widget.user,
-          ),
-          const SizedBox(height: 26),
-          const _SectionTitle(title: 'Add-on services'),
-          const SizedBox(height: 12),
-          ...widget.services.map((service) {
-            final selected = selectedServices.contains(service.serviceId);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _ServiceTile(
-                service: service,
-                selected: selected,
-                onTap: () {
-                  setState(() {
-                    if (selected) {
-                      selectedServices.remove(service.serviceId);
-                    } else {
-                      selectedServices.add(service.serviceId);
-                    }
-                  });
-                },
-              ),
-            );
-          }),
-          const SizedBox(height: 12),
-          _TotalBox(
-            roomPrice: widget.room.pricePerNight,
-            nights: nights,
-            serviceCount: selectedServices.length,
-            totalPrice: totalPrice,
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton.icon(
-              onPressed: canBook
-                  ? () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => PaymentConfirmationScreen(
-                            room: widget.room,
-                            roomTypeName: widget.roomTypeName,
-                            user: widget.user,
-                            services: chosenServices,
-                            stayRange: stayRange,
-                            nights: nights,
-                            guests: guestCount,
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            _RoomHero(imageUrl: widget.imageUrl),
+            Transform.translate(
+              offset: const Offset(0, -32),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFEFEFE),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _RoomHeading(
+                      room: widget.room,
+                      roomTypeName: widget.roomTypeName,
+                      averageRating: averageRating,
+                      reviewCount: widget.reviews.length,
+                    ),
+                    const SizedBox(height: 24),
+                    _RoomFacts(
+                      room: widget.room,
+                      roomTypeName: widget.roomTypeName,
+                    ),
+                    if (description.isNotEmpty) ...[
+                      const SizedBox(height: 28),
+                      const _SectionTitle(title: 'Description'),
+                      const SizedBox(height: 10),
+                      Text(
+                        description,
+                        maxLines: descriptionExpanded ? null : 4,
+                        overflow: descriptionExpanded
+                            ? TextOverflow.visible
+                            : TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF66707A),
+                          fontSize: 14,
+                          height: 1.57,
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (description.length > 180)
+                        TextButton(
+                          onPressed: () {
+                            setState(
+                              () => descriptionExpanded = !descriptionExpanded,
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 36),
+                          ),
+                          child: Text(
+                            descriptionExpanded ? 'Show Less' : 'Read More',
                           ),
                         ),
-                      );
-                    }
-                  : null,
-              icon: const Icon(Icons.calendar_month_outlined),
-              label: const Text('Book Now'),
-            ),
-          ),
-          if (widget.room.status == 'available' && stayRange == null) ...[
-            const SizedBox(height: 10),
-            const Text(
-              'Please choose check-in and check-out dates before booking',
-              style: TextStyle(
-                color: AppColors.danger,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+                    ],
+                    const SizedBox(height: 24),
+                    const _SectionTitle(title: 'Your stay'),
+                    const SizedBox(height: 12),
+                    _StayPicker(
+                      stayRange: stayRange,
+                      nights: nights,
+                      onTap: pickStayRange,
+                    ),
+                    const SizedBox(height: 14),
+                    _GuestInput(
+                      controller: guestController,
+                      maxGuests: widget.room.maxGuests,
+                      errorText: guestError,
+                      onChanged: validateGuests,
+                    ),
+                    if (widget.services.isNotEmpty) ...[
+                      const SizedBox(height: 28),
+                      const _SectionTitle(title: 'Add-on services'),
+                      const SizedBox(height: 12),
+                      ...widget.services.map((service) {
+                        final selected = selectedServices.contains(
+                          service.serviceId,
+                        );
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _ServiceTile(
+                            service: service,
+                            selected: selected,
+                            onTap: () {
+                              setState(() {
+                                if (selected) {
+                                  selectedServices.remove(service.serviceId);
+                                } else {
+                                  selectedServices.add(service.serviceId);
+                                }
+                              });
+                            },
+                          ),
+                        );
+                      }),
+                    ],
+                    const SizedBox(height: 18),
+                    _TotalBox(
+                      roomPrice: widget.room.pricePerNight,
+                      nights: nights,
+                      serviceCount: selectedServices.length,
+                      totalPrice: totalPrice,
+                    ),
+                    const SizedBox(height: 28),
+                    _ReviewsSection(
+                      reviews: widget.reviews,
+                      eligibleBookingId: widget.eligibleBookingId,
+                      roomId: widget.room.roomId,
+                      user: widget.user,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
-        ],
+        ),
+      ),
+      bottomNavigationBar: _BookingBar(
+        price: stayRange == null
+            ? _parsePrice(widget.room.pricePerNight)
+            : totalPrice,
+        priceLabel: stayRange == null ? 'Price / night' : 'Total',
+        enabled: widget.room.status == 'available',
+        onPressed: bookNow,
+      ),
+    );
+  }
+
+  Future<void> bookNow() async {
+    validateGuests(guestController.text);
+    if (guestError != null || widget.room.status != 'available') return;
+
+    if (stayRange == null) {
+      await pickStayRange();
+      if (!mounted || stayRange == null) return;
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => PaymentConfirmationScreen(
+          room: widget.room,
+          roomTypeName: widget.roomTypeName,
+          user: widget.user,
+          services: chosenServices,
+          stayRange: stayRange,
+          nights: nights,
+          guests: guestCount,
+        ),
       ),
     );
   }
@@ -1074,94 +1140,59 @@ class _DateBox extends StatelessWidget {
 }
 
 class _RoomHero extends StatelessWidget {
-  final RoomModel room;
-  final String roomTypeName;
   final String? imageUrl;
 
-  const _RoomHero({
-    required this.room,
-    required this.roomTypeName,
-    required this.imageUrl,
-  });
+  const _RoomHero({required this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: AspectRatio(
-          aspectRatio: 1.05,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              imageUrl == null
-                  ? const _RoomImagePlaceholder()
-                  : Image.network(
-                      imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const _RoomImagePlaceholder();
-                      },
-                    ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.05),
-                      Colors.black.withValues(alpha: 0.72),
-                    ],
-                  ),
+    return SizedBox(
+      width: double.infinity,
+      height: 360,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          imageUrl == null
+              ? const _RoomImagePlaceholder()
+              : Image.network(
+                  imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const _RoomImagePlaceholder();
+                  },
                 ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.52),
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.18),
+                ],
+                stops: const [0, 0.48, 1],
               ),
-              Positioned(
-                left: 18,
-                right: 18,
-                bottom: 18,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _StatusBadge(status: room.status),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Room ${room.roomNumber}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                        height: 1.05,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      roomTypeName,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  final String? trailing;
+class _RoomHeading extends StatelessWidget {
+  final RoomModel room;
+  final String roomTypeName;
+  final double averageRating;
+  final int reviewCount;
 
-  const _SectionTitle({required this.title, this.trailing});
+  const _RoomHeading({
+    required this.room,
+    required this.roomTypeName,
+    required this.averageRating,
+    required this.reviewCount,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1169,25 +1200,92 @@ class _SectionTitle extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Room ${room.roomNumber}',
+                style: const TextStyle(
+                  color: Color(0xFF171725),
+                  fontSize: 22,
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Wrap(
+                spacing: 14,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.hotel_outlined,
+                        size: 18,
+                        color: Color(0xFF9CA4AB),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        roomTypeName,
+                        style: const TextStyle(
+                          color: Color(0xFF78828A),
+                          fontSize: 13,
+                          fontFamily: 'Jost',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (reviewCount > 0)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 18,
+                          color: AppColors.warning,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${averageRating.toStringAsFixed(1)} ($reviewCount)',
+                          style: const TextStyle(
+                            color: Color(0xFF171725),
+                            fontSize: 13,
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ],
           ),
         ),
-        if (trailing != null)
-          Text(
-            trailing!,
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+        const SizedBox(width: 14),
+        _StatusBadge(status: room.status),
       ],
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+
+  const _SectionTitle({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+      ),
     );
   }
 }
@@ -1326,6 +1424,102 @@ class _DetailError extends StatelessWidget {
   }
 }
 
+class _BookingBar extends StatelessWidget {
+  final double price;
+  final String priceLabel;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  const _BookingBar({
+    required this.price,
+    required this.priceLabel,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 32,
+            offset: const Offset(0, -8),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    priceLabel,
+                    style: const TextStyle(
+                      color: Color(0xFFA7AEC1),
+                      fontSize: 13,
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '${_formatNumber(price)} VND',
+                      style: const TextStyle(
+                        color: Color(0xFF191D31),
+                        fontSize: 22,
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 18),
+            SizedBox(
+              height: 54,
+              child: ElevatedButton(
+                onPressed: enabled ? onPressed : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2852AF),
+                  foregroundColor: const Color(0xFFFEFEFE),
+                  disabledBackgroundColor: const Color(0xFFE3E9ED),
+                  disabledForegroundColor: const Color(0xFF9CA4AB),
+                  minimumSize: const Size(0, 54),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  enabled ? 'Booking Now' : 'Unavailable',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontFamily: 'Jost',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TotalBox extends StatelessWidget {
   final String roomPrice;
   final int nights;
@@ -1354,8 +1548,10 @@ class _TotalBox extends StatelessWidget {
             label: 'Room x $nights night${nights > 1 ? 's' : ''}',
             value: '${_formatNumber(_parsePrice(roomPrice) * nights)} VND',
           ),
-          const SizedBox(height: 8),
-          _TotalLine(label: 'Services', value: '$serviceCount selected'),
+          if (serviceCount > 0) ...[
+            const SizedBox(height: 8),
+            _TotalLine(label: 'Services', value: '$serviceCount selected'),
+          ],
           const Divider(height: 22, color: Colors.white24),
           _TotalLine(
             label: 'Total',
@@ -1427,46 +1623,85 @@ class _RoomFacts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 8,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Fact(icon: Icons.layers_outlined, text: 'Floor ${room.floor}'),
-        _Fact(icon: Icons.people_outline, text: '${room.maxGuests} guests'),
-        _Fact(icon: Icons.bed_outlined, text: '${room.bedCount} beds'),
-        _Fact(icon: Icons.meeting_room_outlined, text: roomTypeName),
+        const _SectionTitle(title: 'Room information'),
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const spacing = 10.0;
+            final width = (constraints.maxWidth - spacing * 3) / 4;
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Fact(
+                  width: width,
+                  icon: Icons.layers_outlined,
+                  text: 'Floor ${room.floor}',
+                ),
+                const SizedBox(width: spacing),
+                _Fact(
+                  width: width,
+                  icon: Icons.people_outline,
+                  text: '${room.maxGuests} Guests',
+                ),
+                const SizedBox(width: spacing),
+                _Fact(
+                  width: width,
+                  icon: Icons.bed_outlined,
+                  text: '${room.bedCount} Beds',
+                ),
+                const SizedBox(width: spacing),
+                _Fact(
+                  width: width,
+                  icon: Icons.meeting_room_outlined,
+                  text: roomTypeName,
+                ),
+              ],
+            );
+          },
+        ),
       ],
     );
   }
 }
 
 class _Fact extends StatelessWidget {
+  final double width;
   final IconData icon;
   final String text;
 
-  const _Fact({required this.icon, required this.text});
+  const _Fact({required this.width, required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    return SizedBox(
+      width: width,
+      child: Column(
         children: [
-          Icon(icon, size: 17, color: AppColors.primary),
-          const SizedBox(width: 6),
+          Container(
+            width: 54,
+            height: 54,
+            decoration: const BoxDecoration(
+              color: Color(0xFFE7F1FF),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 24, color: AppColors.primary),
+          ),
+          const SizedBox(height: 8),
           Text(
             text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-              fontFamily: 'Jost',
-              fontWeight: FontWeight.w700,
+              color: Color(0xFF78828A),
+              fontSize: 12,
+              height: 1.30,
+              fontFamily: 'Plus Jakarta Sans',
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -1575,54 +1810,3 @@ IconData _serviceIcon(String name) {
   if (text.contains('laundry')) return Icons.local_laundry_service_outlined;
   return Icons.room_service_outlined;
 }
-
-const _fallbackServices = [
-  BookingServiceModel(
-    serviceId: 2,
-    serviceCode: 'SV002',
-    name: 'Breakfast',
-    price: '100000.00',
-    availability: true,
-    description: 'Buffet breakfast',
-  ),
-  BookingServiceModel(
-    serviceId: 3,
-    serviceCode: 'SV003',
-    name: 'Airport Pickup',
-    price: '200000.00',
-    availability: true,
-    description: 'Pickup from airport',
-  ),
-  BookingServiceModel(
-    serviceId: 4,
-    serviceCode: 'SV004',
-    name: 'Spa',
-    price: '300000.00',
-    availability: true,
-    description: 'Relaxing massage and spa',
-  ),
-  BookingServiceModel(
-    serviceId: 5,
-    serviceCode: 'SV005',
-    name: 'Dinner',
-    price: '250000.00',
-    availability: true,
-    description: 'Dinner buffet at restaurant',
-  ),
-  BookingServiceModel(
-    serviceId: 6,
-    serviceCode: 'SV006',
-    name: 'Mini Bar',
-    price: '150000.00',
-    availability: true,
-    description: 'In-room mini bar',
-  ),
-  BookingServiceModel(
-    serviceId: 1,
-    serviceCode: 'SV001',
-    name: 'Laundry',
-    price: '55000.00',
-    availability: true,
-    description: 'Laundry and ironing service',
-  ),
-];
