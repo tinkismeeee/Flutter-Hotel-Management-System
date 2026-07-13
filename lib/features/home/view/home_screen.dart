@@ -3,7 +3,6 @@ import '../../../core/theme/colors.dart';
 import '../../../core/models/user_model.dart';
 import '../controller/home_controller.dart';
 import '../../../core/models/room_model.dart';
-import '../../bookings/view/my_bookings_screen.dart';
 import '../../detail_rooms/view/detail_room_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -193,14 +192,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       searchController: searchController,
                       onSearchChanged: searchRooms,
                       onFilterPressed: openFilterSheet,
-                      onBookingsPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                MyBookingsScreen(user: widget.user),
-                          ),
-                        );
-                      },
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -268,14 +259,12 @@ class _Header extends StatelessWidget {
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onFilterPressed;
-  final VoidCallback onBookingsPressed;
 
   const _Header({
     required this.user,
     required this.searchController,
     required this.onSearchChanged,
     required this.onFilterPressed,
-    required this.onBookingsPressed,
   });
 
   @override
@@ -337,16 +326,6 @@ class _Header extends StatelessWidget {
                   foregroundColor: AppColors.textPrimary,
                 ),
                 icon: const Icon(Icons.tune),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                onPressed: onBookingsPressed,
-                tooltip: 'My bookings',
-                style: IconButton.styleFrom(
-                  backgroundColor: AppColors.surface,
-                  foregroundColor: AppColors.textPrimary,
-                ),
-                icon: const Icon(Icons.history),
               ),
             ],
           ),

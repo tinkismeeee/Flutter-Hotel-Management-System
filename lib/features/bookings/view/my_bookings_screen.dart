@@ -10,8 +10,13 @@ import '../controller/bookings_controller.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   final UserModel user;
+  final int refreshToken;
 
-  const MyBookingsScreen({super.key, required this.user});
+  const MyBookingsScreen({
+    super.key,
+    required this.user,
+    this.refreshToken = 0,
+  });
 
   @override
   State<MyBookingsScreen> createState() => _MyBookingsScreenState();
@@ -30,6 +35,14 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   void initState() {
     super.initState();
     bookingsFuture = fetchBookings();
+  }
+
+  @override
+  void didUpdateWidget(covariant MyBookingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshToken != widget.refreshToken) {
+      bookingsFuture = fetchBookings();
+    }
   }
 
   Future<List<UserBookingModel>> fetchBookings() {
