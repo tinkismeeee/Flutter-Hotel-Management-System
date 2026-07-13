@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/const/api_endpoints.dart';
 import '../models/hotel_service.dart';
+import 'api_response.dart';
 
 class HotelServiceService {
   static const String baseUrl = ApiEndpoints.service;
@@ -12,9 +13,7 @@ class HotelServiceService {
   };
 
   static Future<List<HotelService>> getServices() async {
-    final response = await http.get(
-      Uri.parse(baseUrl),
-    );
+    final response = await http.get(Uri.parse(baseUrl));
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
@@ -43,10 +42,7 @@ class HotelServiceService {
       }),
     );
 
-    print('ADD SERVICE STATUS: ${response.statusCode}');
-    print('ADD SERVICE BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 201;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> updateService({
@@ -67,10 +63,7 @@ class HotelServiceService {
       }),
     );
 
-    print('UPDATE SERVICE STATUS: ${response.statusCode}');
-    print('UPDATE SERVICE BODY: ${response.body}');
-
-    return response.statusCode == 200;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> deleteService(int id) async {
@@ -79,9 +72,6 @@ class HotelServiceService {
       headers: headers,
     );
 
-    print('DELETE SERVICE STATUS: ${response.statusCode}');
-    print('DELETE SERVICE BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 204;
+    return isSuccessfulStatus(response.statusCode);
   }
 }

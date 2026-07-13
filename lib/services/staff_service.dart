@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/const/api_endpoints.dart';
 import '../models/staff.dart';
+import 'api_response.dart';
 
 class StaffService {
   static const String baseUrl = ApiEndpoints.staff;
@@ -12,10 +13,7 @@ class StaffService {
   };
 
   static Future<List<Staff>> getStaffs() async {
-    final response = await http.get(
-      Uri.parse(baseUrl),
-      headers: headers,
-    );
+    final response = await http.get(Uri.parse(baseUrl), headers: headers);
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
@@ -46,10 +44,7 @@ class StaffService {
       }),
     );
 
-    print('ADD STATUS: ${response.statusCode}');
-    print('ADD BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 201;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> updateStaff({
@@ -72,10 +67,7 @@ class StaffService {
       }),
     );
 
-    print('UPDATE STATUS: ${response.statusCode}');
-    print('UPDATE BODY: ${response.body}');
-
-    return response.statusCode == 200;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> deleteStaff(int id) async {
@@ -84,9 +76,6 @@ class StaffService {
       headers: headers,
     );
 
-    print('DELETE STATUS: ${response.statusCode}');
-    print('DELETE BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 204;
+    return isSuccessfulStatus(response.statusCode);
   }
 }

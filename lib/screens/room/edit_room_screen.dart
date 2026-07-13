@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import '../../models/room.dart';
 import '../../services/room_service.dart';
 import '../../utils/app_colors.dart';
+import 'room_form_values.dart';
 
 class EditRoomScreen extends StatefulWidget {
   final Room room;
 
-  const EditRoomScreen({
-    super.key,
-    required this.room,
-  });
+  const EditRoomScreen({super.key, required this.room});
 
   @override
   State<EditRoomScreen> createState() => _EditRoomScreenState();
@@ -29,11 +27,36 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
   bool isLoading = false;
 
   final List<Map<String, dynamic>> roomTypes = [
-    {'id': 1, 'name': 'Standard', 'price': 500000.0, 'description': 'Basic room with one bed'},
-    {'id': 2, 'name': 'Deluxe', 'price': 1200000.0, 'description': 'Spacious room with city view'},
-    {'id': 3, 'name': 'Suite', 'price': 2500000.0, 'description': 'Luxury room with living area and kitchen'},
-    {'id': 4, 'name': 'Family', 'price': 580000.0, 'description': 'Large room for family stay'},
-    {'id': 5, 'name': 'Business', 'price': 1500000.0, 'description': 'Room with working desk and Wi-Fi'},
+    {
+      'id': 1,
+      'name': 'Standard',
+      'price': 500000.0,
+      'description': 'Basic room with one bed',
+    },
+    {
+      'id': 2,
+      'name': 'Deluxe',
+      'price': 1200000.0,
+      'description': 'Spacious room with city view',
+    },
+    {
+      'id': 3,
+      'name': 'Suite',
+      'price': 2500000.0,
+      'description': 'Luxury room with living area and kitchen',
+    },
+    {
+      'id': 4,
+      'name': 'Family',
+      'price': 580000.0,
+      'description': 'Large room for family stay',
+    },
+    {
+      'id': 5,
+      'name': 'Business',
+      'price': 1500000.0,
+      'description': 'Room with working desk and Wi-Fi',
+    },
   ];
 
   @override
@@ -42,10 +65,18 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
 
     roomNumberController = TextEditingController(text: widget.room.roomNumber);
     floorController = TextEditingController(text: widget.room.floor.toString());
-    priceController = TextEditingController(text: widget.room.pricePerNight.toStringAsFixed(0));
-    maxGuestsController = TextEditingController(text: widget.room.maxGuests.toString());
-    bedCountController = TextEditingController(text: widget.room.bedCount.toString());
-    descriptionController = TextEditingController(text: widget.room.description);
+    priceController = TextEditingController(
+      text: widget.room.pricePerNight.toStringAsFixed(0),
+    );
+    maxGuestsController = TextEditingController(
+      text: widget.room.maxGuests.toString(),
+    );
+    bedCountController = TextEditingController(
+      text: widget.room.bedCount.toString(),
+    );
+    descriptionController = TextEditingController(
+      text: widget.room.description,
+    );
 
     selectedRoomTypeId = widget.room.roomTypeId;
     status = widget.room.status.isEmpty ? 'available' : widget.room.status;
@@ -53,14 +84,8 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
   }
 
   void updateRoomTypeInfo(int roomTypeId) {
-    final selected = roomTypes.firstWhere(
-          (item) => item['id'] == roomTypeId,
-    );
-
     setState(() {
       selectedRoomTypeId = roomTypeId;
-      priceController.text = selected['price'].toStringAsFixed(0);
-      descriptionController.text = selected['description'];
     });
   }
 
@@ -76,16 +101,29 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
   }
 
   Future<void> updateRoom() async {
+    final values = RoomFormValues.tryParse(
+      floor: floorController.text.trim(),
+      pricePerNight: priceController.text.trim(),
+      maxGuests: maxGuestsController.text.trim(),
+      bedCount: bedCountController.text.trim(),
+    );
+    if (values == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid room values')));
+      return;
+    }
+
     setState(() => isLoading = true);
 
     final success = await RoomService.updateRoom(
       id: widget.room.roomId,
       roomNumber: roomNumberController.text.trim(),
       roomTypeId: selectedRoomTypeId,
-      floor: int.parse(floorController.text.trim()),
-      pricePerNight: double.parse(priceController.text.trim()),
-      maxGuests: int.parse(maxGuestsController.text.trim()),
-      bedCount: int.parse(bedCountController.text.trim()),
+      floor: values.floor,
+      pricePerNight: values.pricePerNight,
+      maxGuests: values.maxGuests,
+      bedCount: values.bedCount,
       description: descriptionController.text.trim(),
       status: status,
       isActive: isActive,
@@ -97,7 +135,9 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success ? 'Cập nhật phòng thành công' : 'Cập nhật phòng thất bại'),
+        content: Text(
+          success ? 'Cập nhật phòng thành công' : 'Cập nhật phòng thất bại',
+        ),
       ),
     );
 
@@ -105,11 +145,11 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
   }
 
   Widget inputField(
-      String label,
-      TextEditingController controller, {
-        TextInputType type = TextInputType.text,
-        bool readOnly = false,
-      }) {
+    String label,
+    TextEditingController controller, {
+    TextInputType type = TextInputType.text,
+    bool readOnly = false,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       child: TextField(
@@ -227,7 +267,7 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedRoomType = roomTypes.firstWhere(
-          (item) => item['id'] == selectedRoomTypeId,
+      (item) => item['id'] == selectedRoomTypeId,
     );
 
     return Scaffold(
@@ -260,16 +300,27 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
                     ),
                   ),
 
-                  inputField('Tầng', floorController, type: TextInputType.number),
+                  inputField(
+                    'Tầng',
+                    floorController,
+                    type: TextInputType.number,
+                  ),
                   inputField(
                     'Giá mỗi đêm',
                     priceController,
                     type: TextInputType.number,
-                    readOnly: true,
                   ),
-                  inputField('Số khách tối đa', maxGuestsController, type: TextInputType.number),
-                  inputField('Số giường', bedCountController, type: TextInputType.number),
-                  inputField('Mô tả', descriptionController, readOnly: true),
+                  inputField(
+                    'Số khách tối đa',
+                    maxGuestsController,
+                    type: TextInputType.number,
+                  ),
+                  inputField(
+                    'Số giường',
+                    bedCountController,
+                    type: TextInputType.number,
+                  ),
+                  inputField('Mô tả', descriptionController),
 
                   statusDropdown(),
 
@@ -294,7 +345,9 @@ class _EditRoomScreenState extends State<EditRoomScreen> {
                         borderRadius: BorderRadius.circular(18),
                       ),
                     ),
-                    child: Text(isLoading ? 'Đang cập nhật...' : 'Cập nhật phòng'),
+                    child: Text(
+                      isLoading ? 'Đang cập nhật...' : 'Cập nhật phòng',
+                    ),
                   ),
                 ],
               ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/const/api_endpoints.dart';
 import '../models/room.dart';
+import 'api_response.dart';
 
 class RoomService {
   static const String baseUrl = ApiEndpoints.room;
@@ -49,10 +50,7 @@ class RoomService {
       }),
     );
 
-    print('ADD ROOM STATUS: ${response.statusCode}');
-    print('ADD ROOM BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 201;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> updateRoom({
@@ -83,10 +81,7 @@ class RoomService {
       }),
     );
 
-    print('UPDATE ROOM STATUS: ${response.statusCode}');
-    print('UPDATE ROOM BODY: ${response.body}');
-
-    return response.statusCode == 200;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> deleteRoom(int id) async {
@@ -95,9 +90,6 @@ class RoomService {
       headers: headers,
     );
 
-    print('DELETE ROOM STATUS: ${response.statusCode}');
-    print('DELETE ROOM BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 204;
+    return isSuccessfulStatus(response.statusCode);
   }
 }

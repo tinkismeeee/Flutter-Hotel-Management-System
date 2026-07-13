@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/const/api_endpoints.dart';
 import '../models/promotion.dart';
+import 'api_response.dart';
 
 class PromotionService {
   static const String baseUrl = ApiEndpoints.promotion;
@@ -12,9 +13,7 @@ class PromotionService {
   };
 
   static Future<List<Promotion>> getPromotions() async {
-    final response = await http.get(
-      Uri.parse(baseUrl),
-    );
+    final response = await http.get(Uri.parse(baseUrl));
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
@@ -49,10 +48,7 @@ class PromotionService {
       }),
     );
 
-    print('ADD PROMOTION STATUS: ${response.statusCode}');
-    print('ADD PROMOTION BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 201;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> updatePromotion({
@@ -79,10 +75,7 @@ class PromotionService {
       }),
     );
 
-    print('UPDATE PROMOTION STATUS: ${response.statusCode}');
-    print('UPDATE PROMOTION BODY: ${response.body}');
-
-    return response.statusCode == 200;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> deletePromotion(int id) async {
@@ -91,9 +84,6 @@ class PromotionService {
       headers: headers,
     );
 
-    print('DELETE PROMOTION STATUS: ${response.statusCode}');
-    print('DELETE PROMOTION BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 204;
+    return isSuccessfulStatus(response.statusCode);
   }
 }

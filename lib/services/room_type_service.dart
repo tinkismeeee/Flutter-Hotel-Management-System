@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/const/api_endpoints.dart';
 import '../models/room_type.dart';
+import 'api_response.dart';
 
 class RoomTypeService {
   static const String baseUrl = ApiEndpoints.roomTypes;
@@ -12,9 +13,7 @@ class RoomTypeService {
   };
 
   static Future<List<RoomType>> getRoomTypes() async {
-    final response = await http.get(
-      Uri.parse(baseUrl),
-    );
+    final response = await http.get(Uri.parse(baseUrl));
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
@@ -31,16 +30,10 @@ class RoomTypeService {
     final response = await http.post(
       Uri.parse(baseUrl),
       headers: headers,
-      body: jsonEncode({
-        'name': name,
-        'description': description,
-      }),
+      body: jsonEncode({'name': name, 'description': description}),
     );
 
-    print('ADD ROOM TYPE STATUS: ${response.statusCode}');
-    print('ADD ROOM TYPE BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 201;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> updateRoomType({
@@ -51,16 +44,10 @@ class RoomTypeService {
     final response = await http.put(
       Uri.parse('$baseUrl/$id'),
       headers: headers,
-      body: jsonEncode({
-        'name': name,
-        'description': description,
-      }),
+      body: jsonEncode({'name': name, 'description': description}),
     );
 
-    print('UPDATE ROOM TYPE STATUS: ${response.statusCode}');
-    print('UPDATE ROOM TYPE BODY: ${response.body}');
-
-    return response.statusCode == 200;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> deleteRoomType(int id) async {
@@ -69,9 +56,6 @@ class RoomTypeService {
       headers: headers,
     );
 
-    print('DELETE ROOM TYPE STATUS: ${response.statusCode}');
-    print('DELETE ROOM TYPE BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 204;
+    return isSuccessfulStatus(response.statusCode);
   }
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/const/api_endpoints.dart';
 import '../models/customer.dart';
+import 'api_response.dart';
 
 class CustomerService {
   static const String baseUrl = ApiEndpoints.customer;
@@ -16,10 +17,7 @@ class CustomerService {
   };
 
   static Future<List<Customer>> getCustomers() async {
-    final response = await http.get(
-      Uri.parse(baseUrl),
-      headers: authHeaders,
-    );
+    final response = await http.get(Uri.parse(baseUrl), headers: authHeaders);
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
@@ -56,10 +54,7 @@ class CustomerService {
       }),
     );
 
-    print('ADD CUSTOMER STATUS: ${response.statusCode}');
-    print('ADD CUSTOMER BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 201;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> updateCustomer({
@@ -86,10 +81,7 @@ class CustomerService {
       }),
     );
 
-    print('UPDATE CUSTOMER STATUS: ${response.statusCode}');
-    print('UPDATE CUSTOMER BODY: ${response.body}');
-
-    return response.statusCode == 200;
+    return isSuccessfulStatus(response.statusCode);
   }
 
   static Future<bool> deleteCustomer(int id) async {
@@ -98,9 +90,6 @@ class CustomerService {
       headers: authHeaders,
     );
 
-    print('DELETE CUSTOMER STATUS: ${response.statusCode}');
-    print('DELETE CUSTOMER BODY: ${response.body}');
-
-    return response.statusCode == 200 || response.statusCode == 204;
+    return isSuccessfulStatus(response.statusCode);
   }
 }

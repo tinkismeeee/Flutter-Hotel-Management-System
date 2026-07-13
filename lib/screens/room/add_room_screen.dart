@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/room_service.dart';
 import '../../utils/app_colors.dart';
+import 'room_form_values.dart';
 
 class AddRoomScreen extends StatefulWidget {
   const AddRoomScreen({super.key});
@@ -59,18 +60,11 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
   @override
   void initState() {
     super.initState();
-    updateRoomTypeInfo(1);
   }
 
   void updateRoomTypeInfo(int roomTypeId) {
-    final selected = roomTypes.firstWhere(
-      (item) => item['id'] == roomTypeId,
-    );
-
     setState(() {
       selectedRoomTypeId = roomTypeId;
-      priceController.text = selected['price'].toStringAsFixed(0);
-      descriptionController.text = selected['description'];
     });
   }
 
@@ -92,24 +86,32 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
         maxGuestsController.text.trim().isEmpty ||
         bedCountController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đầy đủ thông tin'),
-        ),
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin')),
       );
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    final values = RoomFormValues.tryParse(
+      floor: floorController.text.trim(),
+      pricePerNight: priceController.text.trim(),
+      maxGuests: maxGuestsController.text.trim(),
+      bedCount: bedCountController.text.trim(),
+    );
+    if (values == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid room values')));
+      return;
+    }
 
+    setState(() => isLoading = true);
     final success = await RoomService.addRoom(
       roomNumber: roomNumberController.text.trim(),
       roomTypeId: selectedRoomTypeId,
-      floor: int.parse(floorController.text.trim()),
-      pricePerNight: double.parse(priceController.text.trim()),
-      maxGuests: int.parse(maxGuestsController.text.trim()),
-      bedCount: int.parse(bedCountController.text.trim()),
+      floor: values.floor,
+      pricePerNight: values.pricePerNight,
+      maxGuests: values.maxGuests,
+      bedCount: values.bedCount,
       description: descriptionController.text.trim(),
       status: status,
       isActive: isActive,
@@ -297,7 +299,6 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                     'Giá mỗi đêm',
                     priceController,
                     type: TextInputType.number,
-                    readOnly: true,
                   ),
                   inputField(
                     'Số khách tối đa',
@@ -309,11 +310,7 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                     bedCountController,
                     type: TextInputType.number,
                   ),
-                  inputField(
-                    'Mô tả',
-                    descriptionController,
-                    readOnly: true,
-                  ),
+                  inputField('Mô tả', descriptionController),
 
                   statusDropdown(),
 
@@ -340,9 +337,7 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
                         borderRadius: BorderRadius.circular(18),
                       ),
                     ),
-                    child: Text(
-                      isLoading ? 'Đang thêm...' : 'Thêm phòng',
-                    ),
+                    child: Text(isLoading ? 'Đang thêm...' : 'Thêm phòng'),
                   ),
                 ],
               ),
