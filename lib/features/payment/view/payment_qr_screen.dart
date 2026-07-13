@@ -12,6 +12,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/colors.dart';
 import '../controller/payment_controller.dart';
+import '../services/invoice_pdf_service.dart';
 
 class PaymentQrScreen extends StatefulWidget {
   final RoomModel room;
@@ -45,10 +46,12 @@ class PaymentQrScreen extends StatefulWidget {
 
 class _PaymentQrScreenState extends State<PaymentQrScreen> {
   final paymentController = PaymentController();
+  final invoicePdfService = InvoicePdfService();
   final reviewCommentController = TextEditingController();
   late PayOsPaymentModel payment;
   Timer? statusTimer;
   bool isChecking = false;
+  bool isDownloadingInvoice = false;
   String? statusError;
   int reviewRating = 0;
   int? reviewBookingId;
@@ -188,6 +191,26 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
               ),
             ],
             if (isPaid) ...[
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: isDownloadingInvoice ? null : downloadInvoice,
+                  icon: isDownloadingInvoice
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.picture_as_pdf_outlined),
+                  label: Text(
+                    isDownloadingInvoice
+                        ? 'Preparing invoice...'
+                        : 'Download invoice (PDF)',
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
               _PaymentReviewSection(
                 isLoading: isReviewEligibilityLoading,
@@ -244,6 +267,33 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> downloadInvoice() async {
+    if (!isPaid || isDownloadingInvoice) return;
+    setState(() => isDownloadingInvoice = true);
+    try {
+      final path = await invoicePdfService.download(
+        bookingId: payment.bookingId,
+        room: widget.room,
+        user: widget.user,
+        checkIn: widget.stayRange?.start,
+        checkOut: widget.stayRange?.end,
+        guests: widget.guests,
+        nights: widget.nights,
+      );
+      if (!mounted || path == null) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invoice PDF saved')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_cleanError(error))));
+    } finally {
+      if (mounted) setState(() => isDownloadingInvoice = false);
+    }
   }
 
   Future<void> loadReviewEligibility() async {

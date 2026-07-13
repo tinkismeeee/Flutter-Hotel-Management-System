@@ -4,6 +4,7 @@ import '../../../core/models/user_booking_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/theme/colors.dart';
 import '../../payment/controller/payment_controller.dart';
+import '../../payment/services/invoice_pdf_service.dart';
 import '../../payment/view/payment_qr_screen.dart';
 import '../controller/bookings_controller.dart';
 
@@ -19,9 +20,11 @@ class MyBookingsScreen extends StatefulWidget {
 class _MyBookingsScreenState extends State<MyBookingsScreen> {
   final bookingsController = BookingsController();
   final paymentController = PaymentController();
+  final invoicePdfService = InvoicePdfService();
   late Future<List<UserBookingModel>> bookingsFuture;
   String selectedStatus = 'all';
   int? openingBookingId;
+  int? downloadingInvoiceBookingId;
 
   @override
   void initState() {
@@ -93,7 +96,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       child: _BookingCard(
                         booking: booking,
                         isOpening: openingBookingId == booking.bookingId,
+                        isDownloadingInvoice:
+                            downloadingInvoiceBookingId == booking.bookingId,
                         onTap: () => openBooking(booking),
+                        onDownloadInvoice:
+                            booking.payment.status.toLowerCase() == 'paid'
+                            ? () => downloadInvoice(booking)
+                            : null,
                       ),
                     ),
                   ),
@@ -103,6 +112,35 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         },
       ),
     );
+  }
+
+  Future<void> downloadInvoice(UserBookingModel booking) async {
+    if (downloadingInvoiceBookingId != null) return;
+    setState(() => downloadingInvoiceBookingId = booking.bookingId);
+    try {
+      final path = await invoicePdfService.download(
+        bookingId: booking.bookingId,
+        room: booking.room,
+        user: widget.user,
+        checkIn: booking.checkIn,
+        checkOut: booking.checkOut,
+        guests: booking.totalGuests,
+        nights: booking.numberOfNights,
+      );
+      if (!mounted || path == null) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invoice PDF saved')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => downloadingInvoiceBookingId = null);
+    }
   }
 
   Future<void> openBooking(UserBookingModel booking) async {
@@ -178,12 +216,16 @@ class _BookingStatusFilter extends StatelessWidget {
 class _BookingCard extends StatelessWidget {
   final UserBookingModel booking;
   final bool isOpening;
+  final bool isDownloadingInvoice;
   final VoidCallback onTap;
+  final VoidCallback? onDownloadInvoice;
 
   const _BookingCard({
     required this.booking,
     required this.isOpening,
+    required this.isDownloadingInvoice,
     required this.onTap,
+    required this.onDownloadInvoice,
   });
 
   @override
@@ -280,6 +322,24 @@ class _BookingCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (isDownloadingInvoice)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else if (onDownloadInvoice != null)
+                  IconButton(
+                    onPressed: onDownloadInvoice,
+                    tooltip: 'Download invoice PDF',
+                    icon: const Icon(
+                      Icons.picture_as_pdf_outlined,
+                      color: AppColors.primary,
+                    ),
+                  ),
                 if (isOpening)
                   const SizedBox(
                     width: 22,
