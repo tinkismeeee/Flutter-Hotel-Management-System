@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../core/const/api_endpoints.dart';
 import '../models/room_type.dart';
 
 class RoomTypeService {
-  static const String baseUrl = 'http://143.198.221.127:5678/api/room-types';
+  static const String baseUrl = ApiEndpoints.roomTypes;
 
   static const Map<String, String> headers = {
     'Content-Type': 'application/json',

@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../core/const/api_endpoints.dart';
 import '../models/customer.dart';
 
 class CustomerService {
-  static const String baseUrl = 'http://143.198.221.127:5678/api/customers';
+  static const String baseUrl = ApiEndpoints.customer;
 
   static const Map<String, String> authHeaders = {
     'Content-Type': 'application/json',
