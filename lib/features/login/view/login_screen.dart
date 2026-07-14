@@ -7,8 +7,9 @@ import '../controller/login_controller.dart';
 
 class LoginPage extends StatefulWidget {
   final ValueChanged<UserModel>? onLoggedIn;
+  final LoginController? loginController;
 
-  const LoginPage({super.key, this.onLoggedIn});
+  const LoginPage({super.key, this.onLoggedIn, this.loginController});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -16,7 +17,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-  final LoginController loginController = LoginController();
+  late final LoginController loginController;
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -27,6 +28,12 @@ class _LoginPageState extends State<LoginPage> {
   String? loginError;
 
   bool showErrors = false;
+
+  @override
+  void initState() {
+    super.initState();
+    loginController = widget.loginController ?? LoginController();
+  }
 
   @override
   void dispose() {
@@ -62,6 +69,33 @@ class _LoginPageState extends State<LoginPage> {
       );
       widget.onLoggedIn?.call(user);
       debugPrint('Login successful for user: ${user.username}');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        loginError = error.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> handleGoogleLogin() async {
+    setState(() {
+      isLoading = true;
+      loginError = null;
+    });
+
+    try {
+      final user = await loginController.googleLogin();
+      if (!mounted) return;
+      widget.onLoggedIn?.call(user);
+      debugPrint('Google login successful for user: ${user.username}');
+    } on GoogleLoginCanceled {
+      return;
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -369,9 +403,8 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     GestureDetector(
-                      onTap: () {
-                        debugPrint('Google login');
-                      },
+                      key: const Key('googleLoginButton'),
+                      onTap: isLoading ? null : handleGoogleLogin,
                       child: Container(
                         height: 72,
                         width: 72,

@@ -7,6 +7,7 @@ void main() {
     expect(ApiEndpoints.room, '${ApiEndpoints.baseUrl}/rooms');
     expect(ApiEndpoints.roomTypes, '${ApiEndpoints.baseUrl}/room-types');
     expect(ApiEndpoints.customer, '${ApiEndpoints.baseUrl}/customers');
+    expect(ApiEndpoints.customerGoogleLogin, '${ApiEndpoints.customer}/google');
     expect(ApiEndpoints.booking, '${ApiEndpoints.baseUrl}/bookings');
     expect(ApiEndpoints.service, '${ApiEndpoints.baseUrl}/services');
     expect(ApiEndpoints.promotion, '${ApiEndpoints.baseUrl}/promotions');

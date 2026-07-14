@@ -17,6 +17,7 @@ class ApiEndpoints {
   static const String payment = "$baseUrl/payments";
   static const String staff = "$baseUrl/staff";
   static const String customerLogin = "$customer/login";
+  static const String customerGoogleLogin = "$customer/google";
   static String customerByEmail(String email) => "$customer/email/$email";
   static String customerById(String id) => "$customer/$id";
   static String promotionByCode(String code) => "$promotion/code/$code";
