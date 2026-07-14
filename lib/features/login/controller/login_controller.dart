@@ -78,7 +78,7 @@ class LoginController {
     if (data is! Map<String, dynamic>) {
       throw Exception('Invalid server response');
     }
-    if (response.statusCode != 200) {
+    if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception(
         (data['message'] ?? data['error'])?.toString() ?? 'Google login failed',
       );

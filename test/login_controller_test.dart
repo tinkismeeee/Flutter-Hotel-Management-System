@@ -63,6 +63,24 @@ void main() {
     },
   );
 
+  test('googleLogin accepts a newly created user response', () async {
+    final controller = LoginController(
+      googleTokenProvider: () async => 'google-id-token',
+      post: (uri, {headers, body, encoding}) async => http.Response(
+        jsonEncode(<String, Object>{
+          'message': 'Google login successful',
+          'user': userJson,
+        }),
+        201,
+      ),
+    );
+
+    final user = await controller.googleLogin();
+
+    expect(user.email, 'google@example.com');
+    expect((await UserModel.loadCurrentUser())?.email, 'google@example.com');
+  });
+
   test('googleLogin propagates a backend message', () async {
     final controller = LoginController(
       googleTokenProvider: () async => 'google-id-token',
