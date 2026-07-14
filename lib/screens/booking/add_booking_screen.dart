@@ -34,9 +34,16 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
   }
 
   // Sửa lại hàm pickDateTime để xử lý logic khóa ngày
-  Future<void> pickDateTime(TextEditingController controller, bool isCheckIn) async {
+  Future<void> pickDateTime(
+    TextEditingController controller,
+    bool isCheckIn,
+  ) async {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day); // Đưa về 00:00 hôm nay
+    final today = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ); // Đưa về 00:00 hôm nay
 
     // Xác định mốc ngày đầu tiên được phép chọn (firstDate) và ngày mặc định (initialDate)
     DateTime firstDate;
@@ -56,10 +63,13 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
       context: context,
       initialDate: initialDate,
       firstDate: firstDate, // Áp dụng ràng buộc ngày ở đây
-      lastDate: DateTime(now.year + 5), // Cho phép đặt trước tối đa 5 năm tính từ thời điểm hiện tại
+      lastDate: DateTime(
+        now.year + 5,
+      ), // Cho phép đặt trước tối đa 5 năm tính từ thời điểm hiện tại
     );
 
     if (date == null) return;
+    if (!mounted) return;
 
     final time = await showTimePicker(
       context: context,
@@ -67,6 +77,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
     );
 
     if (time == null) return;
+    if (!mounted) return;
 
     // Lưu lại ngày Check-in để làm mốc chặn cho ngày Check-out
     if (isCheckIn) {
@@ -78,7 +89,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
     }
 
     controller.text =
-    '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00';
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00';
   }
 
   List<int> parseRoomIds(String text) {
@@ -97,9 +108,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
         totalGuestsController.text.trim().isEmpty ||
         roomIdsController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập đầy đủ thông tin'),
-        ),
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin')),
       );
       return;
     }
@@ -108,9 +117,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
 
     if (roomIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Room IDs không hợp lệ. Ví dụ: 1,2'),
-        ),
+        const SnackBar(content: Text('Room IDs không hợp lệ. Ví dụ: 1,2')),
       );
       return;
     }
@@ -150,12 +157,12 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
   }
 
   Widget inputField(
-      String label,
-      TextEditingController controller, {
-        bool readOnly = false,
-        TextInputType type = TextInputType.text,
-        VoidCallback? onTap,
-      }) {
+    String label,
+    TextEditingController controller, {
+    bool readOnly = false,
+    TextInputType type = TextInputType.text,
+    VoidCallback? onTap,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       child: TextField(
@@ -167,19 +174,14 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
           labelText: label,
           filled: true,
           fillColor: Colors.white,
-          labelStyle: const TextStyle(
-            color: AppColors.textGray,
-          ),
+          labelStyle: const TextStyle(color: AppColors.textGray),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
             borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(
-              color: AppColors.gold,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: AppColors.gold, width: 2),
           ),
         ),
       ),
@@ -200,10 +202,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(
-              Icons.arrow_back,
-              color: AppColors.gold,
-            ),
+            icon: const Icon(Icons.arrow_back, color: AppColors.gold),
           ),
           const Expanded(
             child: Text(
@@ -259,14 +258,8 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
                     totalGuestsController,
                     type: TextInputType.number,
                   ),
-                  inputField(
-                    'Room IDs, ví dụ: 1,2',
-                    roomIdsController,
-                  ),
-                  inputField(
-                    'Mã khuyến mãi nếu có',
-                    promotionCodeController,
-                  ),
+                  inputField('Room IDs, ví dụ: 1,2', roomIdsController),
+                  inputField('Mã khuyến mãi nếu có', promotionCodeController),
 
                   const SizedBox(height: 20),
 
@@ -275,9 +268,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.gold,
                       foregroundColor: AppColors.navy,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 15,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                       ),

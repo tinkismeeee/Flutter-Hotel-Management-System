@@ -6,10 +6,7 @@ import '../../utils/app_colors.dart';
 class EditBookingScreen extends StatefulWidget {
   final Booking booking;
 
-  const EditBookingScreen({
-    super.key,
-    required this.booking,
-  });
+  const EditBookingScreen({super.key, required this.booking});
 
   @override
   State<EditBookingScreen> createState() => _EditBookingScreenState();
@@ -33,7 +30,9 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
       text: formatDateTime(widget.booking.checkOut),
     );
 
-    status = widget.booking.status.isEmpty ? 'confirmed' : widget.booking.status;
+    status = widget.booking.status.isEmpty
+        ? 'confirmed'
+        : widget.booking.status;
   }
 
   String formatDateTime(String value) {
@@ -74,6 +73,7 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
     );
 
     if (date == null) return;
+    if (!mounted) return;
 
     final time = await showTimePicker(
       context: context,
@@ -81,9 +81,10 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
     );
 
     if (time == null) return;
+    if (!mounted) return;
 
     controller.text =
-    '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} '
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} '
         '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00';
   }
 
@@ -157,7 +158,7 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 14,
             offset: const Offset(0, 7),
           ),
@@ -169,7 +170,7 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: AppColors.gold.withOpacity(0.18),
+                backgroundColor: AppColors.gold.withValues(alpha: 0.18),
                 child: const Icon(
                   Icons.calendar_month_rounded,
                   color: AppColors.gold,
@@ -196,18 +197,17 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
           infoRow('Username', widget.booking.username),
           infoRow('Ngày đặt', shortDateTime(widget.booking.bookingDate)),
           infoRow('Số khách', widget.booking.totalGuests.toString()),
-
         ],
       ),
     );
   }
 
   Widget inputField(
-      String label,
-      TextEditingController controller, {
-        bool readOnly = false,
-        VoidCallback? onTap,
-      }) {
+    String label,
+    TextEditingController controller, {
+    bool readOnly = false,
+    VoidCallback? onTap,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       child: TextField(
@@ -218,19 +218,14 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
           labelText: label,
           filled: true,
           fillColor: Colors.white,
-          labelStyle: const TextStyle(
-            color: AppColors.textGray,
-          ),
+          labelStyle: const TextStyle(color: AppColors.textGray),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
             borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(
-              color: AppColors.gold,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: AppColors.gold, width: 2),
           ),
         ),
       ),
@@ -279,10 +274,7 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(
-              Icons.arrow_back,
-              color: AppColors.gold,
-            ),
+            icon: const Icon(Icons.arrow_back, color: AppColors.gold),
           ),
           const Expanded(
             child: Text(
@@ -350,9 +342,7 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.gold,
                       foregroundColor: AppColors.navy,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 15,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                       ),
