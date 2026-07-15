@@ -16,6 +16,7 @@ class PaymentConfirmationScreen extends StatefulWidget {
   final DateTimeRange? stayRange;
   final int nights;
   final int guests;
+  final String? imageUrl;
 
   const PaymentConfirmationScreen({
     super.key,
@@ -26,6 +27,7 @@ class PaymentConfirmationScreen extends StatefulWidget {
     required this.stayRange,
     required this.nights,
     required this.guests,
+    this.imageUrl,
   });
 
   @override
@@ -44,11 +46,14 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
   double get roomTotal =>
       _parsePrice(widget.room.pricePerNight) * widget.nights;
+
   double get serviceTotal => widget.services.fold(
     0,
     (sum, service) => sum + _parsePrice(service.price),
   );
+
   double get subtotal => roomTotal + serviceTotal;
+
   double get discountAmount {
     final promotion = appliedPromotion;
     if (promotion == null) return 0;
@@ -60,10 +65,8 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     return (discountBase * promotion.discountValue / 100).roundToDouble();
   }
 
-  double get vatAmount =>
-      ((subtotal - discountAmount).clamp(0, double.infinity) * 0.1)
-          .roundToDouble();
-  double get finalTotal => subtotal - discountAmount + vatAmount;
+  double get finalTotal =>
+      (subtotal - discountAmount).clamp(0, double.infinity).toDouble();
 
   @override
   void dispose() {
@@ -74,22 +77,56 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Confirm payment')),
+      backgroundColor: const Color(0xFFFEFEFE),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFEFEFE),
+        foregroundColor: const Color(0xFF171725),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        leadingWidth: 76,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 20, top: 6, bottom: 6),
+          child: IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back),
+          ),
+        ),
+        title: const Text(
+          'Checkout',
+          style: TextStyle(
+            color: Color(0xFF171725),
+            fontSize: 18,
+            fontFamily: 'Jost',
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.09,
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SummaryCard(
+            _RoomOverview(
               room: widget.room,
               roomTypeName: widget.roomTypeName,
+              imageUrl: widget.imageUrl,
+            ),
+            const SizedBox(height: 24),
+            _CheckoutPanel(
+              room: widget.room,
+              roomTypeName: widget.roomTypeName,
+              phone: widget.user.phone.trim(),
               stayRange: widget.stayRange,
               nights: widget.nights,
               guests: widget.guests,
+              services: widget.services,
+              roomTotal: roomTotal,
+              discountAmount: discountAmount,
+              finalTotal: finalTotal,
             ),
-            const SizedBox(height: 18),
-            _ServicesCard(services: widget.services),
-            const SizedBox(height: 18),
+            const SizedBox(height: 24),
             _PromoBox(
               controller: promoController,
               errorText: promoError,
@@ -98,46 +135,13 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
               onApply: applyPromo,
               onClear: clearPromo,
             ),
-            const SizedBox(height: 18),
-            _PriceBox(
-              subtotal: subtotal,
-              discountAmount: discountAmount,
-              vatAmount: vatAmount,
-              finalTotal: finalTotal,
-            ),
-            if (paymentError != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                paymentError!,
-                style: const TextStyle(
-                  color: AppColors.danger,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-            const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton.icon(
-                onPressed: isCreatingPayment ? null : createPayment,
-                icon: isCreatingPayment
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.qr_code_2),
-                label: Text(
-                  isCreatingPayment
-                      ? 'Creating payment...'
-                      : 'Continue to payment',
-                ),
-              ),
-            ),
           ],
         ),
+      ),
+      bottomNavigationBar: _PaymentActionBar(
+        errorText: paymentError,
+        isLoading: isCreatingPayment,
+        onPressed: createPayment,
       ),
     );
   }
@@ -161,7 +165,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       if (!mounted) return;
       setState(() {
         appliedPromotion = promotion;
-        promoError = null;
+        promoController.text = promotion.code;
       });
     } catch (error) {
       if (!mounted) return;
@@ -213,6 +217,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         MaterialPageRoute(
           builder: (context) => PaymentQrScreen(
             room: widget.room,
+            user: widget.user,
             roomTypeName: widget.roomTypeName,
             services: widget.services,
             stayRange: widget.stayRange,
@@ -233,57 +238,232 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
+class _RoomOverview extends StatelessWidget {
   final RoomModel room;
   final String roomTypeName;
-  final DateTimeRange? stayRange;
-  final int nights;
-  final int guests;
+  final String? imageUrl;
 
-  const _SummaryCard({
+  const _RoomOverview({
     required this.room,
     required this.roomTypeName,
-    required this.stayRange,
-    required this.nights,
-    required this.guests,
+    required this.imageUrl,
   });
 
   @override
   Widget build(BuildContext context) {
-    return _Panel(
+    final typeName = roomTypeName.trim().isNotEmpty
+        ? roomTypeName.trim()
+        : room.roomTypeName.trim();
+    final hasImage = imageUrl?.trim().isNotEmpty == true;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasImage) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              imageUrl!,
+              width: 78,
+              height: 78,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const _RoomImagePlaceholder();
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Room ${room.roomNumber}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF171725),
+                  fontSize: 20,
+                  fontFamily: 'Jost',
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                  letterSpacing: 0.1,
+                ),
+              ),
+              if (typeName.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.bed_outlined,
+                      size: 16,
+                      color: Color(0xFF9CA4AB),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        typeName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF9CA4AB),
+                          fontSize: 12,
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontWeight: FontWeight.w400,
+                          height: 1.33,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text:
+                          '${_formatNumber(_parsePrice(room.pricePerNight))} VND',
+                      style: const TextStyle(
+                        color: Color(0xFF2852AF),
+                        fontSize: 16,
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontWeight: FontWeight.w600,
+                        height: 1.5,
+                      ),
+                    ),
+                    const TextSpan(
+                      text: ' /night',
+                      style: TextStyle(
+                        color: Color(0xFF171725),
+                        fontSize: 14,
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontWeight: FontWeight.w400,
+                        height: 1.57,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RoomImagePlaceholder extends StatelessWidget {
+  const _RoomImagePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 78,
+      height: 78,
+      color: const Color(0xFFECF1F6),
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.hotel_outlined,
+        color: Color(0xFF9CA4AB),
+        size: 28,
+      ),
+    );
+  }
+}
+
+class _CheckoutPanel extends StatelessWidget {
+  final RoomModel room;
+  final String roomTypeName;
+  final String phone;
+  final DateTimeRange? stayRange;
+  final int nights;
+  final int guests;
+  final List<BookingServiceModel> services;
+  final double roomTotal;
+  final double discountAmount;
+  final double finalTotal;
+
+  const _CheckoutPanel({
+    required this.room,
+    required this.roomTypeName,
+    required this.phone,
+    required this.stayRange,
+    required this.nights,
+    required this.guests,
+    required this.services,
+    required this.roomTotal,
+    required this.discountAmount,
+    required this.finalTotal,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final typeName = roomTypeName.trim().isNotEmpty
+        ? roomTypeName.trim()
+        : room.roomTypeName.trim();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFFE8EAEC)),
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Room ${room.roomNumber}',
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            roomTypeName,
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _InfoLine(
+          const _PanelTitle('Your Booking'),
+          const SizedBox(height: 8),
+          _DetailRow(
             icon: Icons.calendar_today_outlined,
-            label: stayRange == null
-                ? 'No dates selected'
-                : '${_formatDate(stayRange!.start)} - ${_formatDate(stayRange!.end)}',
-            value: '$nights night${nights > 1 ? 's' : ''}',
+            label: 'Dates',
+            value: stayRange == null
+                ? 'Not selected'
+                : _formatDateRange(stayRange!),
           ),
-          const SizedBox(height: 10),
-          _InfoLine(
+          _DetailRow(
             icon: Icons.people_outline,
-            label: 'Guests',
-            value: '$guests',
+            label: 'Guest',
+            value: '$guests Guest${guests == 1 ? '' : 's'} (1 Room)',
+          ),
+          if (typeName.isNotEmpty)
+            _DetailRow(
+              icon: Icons.meeting_room_outlined,
+              label: 'Room type',
+              value: typeName,
+            ),
+          if (phone.isNotEmpty)
+            _DetailRow(
+              icon: Icons.phone_outlined,
+              label: 'Phone',
+              value: phone,
+            ),
+          const Divider(height: 32, color: Color(0xFFBFC6CC)),
+          const _PanelTitle('Price Details'),
+          const SizedBox(height: 8),
+          _PriceRow(
+            label: 'Room ($nights night${nights == 1 ? '' : 's'})',
+            value: '${_formatNumber(roomTotal)} VND',
+          ),
+          ...services.map(
+            (service) => _PriceRow(
+              label: service.name,
+              value: '${_formatNumber(_parsePrice(service.price))} VND',
+            ),
+          ),
+          if (discountAmount > 0)
+            _PriceRow(
+              label: 'Discount',
+              value: '-${_formatNumber(discountAmount)} VND',
+              valueColor: const Color(0xFF17A673),
+            ),
+          const Divider(height: 24, color: Color(0xFFE8EAEC)),
+          _PriceRow(
+            label: 'Total price',
+            value: '${_formatNumber(finalTotal)} VND',
+            strong: true,
           ),
         ],
       ),
@@ -291,45 +471,120 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-class _ServicesCard extends StatelessWidget {
-  final List<BookingServiceModel> services;
+class _PanelTitle extends StatelessWidget {
+  final String text;
 
-  const _ServicesCard({required this.services});
+  const _PanelTitle(this.text);
 
   @override
   Widget build(BuildContext context) {
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Text(
+      text,
+      style: const TextStyle(
+        color: Color(0xFF2852AF),
+        fontSize: 14,
+        fontFamily: 'Plus Jakarta Sans',
+        fontWeight: FontWeight.w600,
+        height: 1.3,
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
         children: [
-          const Text(
-            'Services',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+          Icon(icon, size: 20, color: const Color(0xFF78828A)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF171725),
+                fontSize: 14,
+                fontFamily: 'Plus Jakarta Sans',
+                fontWeight: FontWeight.w400,
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          if (services.isEmpty)
-            const Text(
-              'No add-on services',
-              style: TextStyle(
-                color: AppColors.textMuted,
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Color(0xFF171725),
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            )
-          else
-            ...services.map(
-              (service) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _PriceLine(
-                  label: service.name,
-                  value: '${_formatNumber(_parsePrice(service.price))} VND',
-                ),
+                fontFamily: 'Plus Jakarta Sans',
+                fontWeight: FontWeight.w500,
+                height: 1.3,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PriceRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool strong;
+  final Color? valueColor;
+
+  const _PriceRow({
+    required this.label,
+    required this.value,
+    this.strong = false,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: const Color(0xFF171725),
+                fontSize: 14,
+                fontFamily: 'Plus Jakarta Sans',
+                fontWeight: strong ? FontWeight.w600 : FontWeight.w400,
+                height: strong ? 1.3 : 1.5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: valueColor ?? const Color(0xFF171725),
+              fontSize: 14,
+              fontFamily: 'Plus Jakarta Sans',
+              fontWeight: strong ? FontWeight.w700 : FontWeight.w500,
+              height: 1.3,
+            ),
+          ),
         ],
       ),
     );
@@ -355,256 +610,162 @@ class _PromoBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Discount code',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+    final isApplied = appliedCode != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Promo',
+          style: TextStyle(
+            color: Color(0xFF171725),
+            fontSize: 16,
+            fontFamily: 'Plus Jakarta Sans',
+            fontWeight: FontWeight.w500,
+            height: 1.3,
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: controller,
+          readOnly: isApplied || isLoading,
+          textCapitalization: TextCapitalization.characters,
+          onSubmitted: (_) {
+            if (!isApplied && !isLoading) onApply();
+          },
+          decoration: InputDecoration(
+            hintText: 'Enter promotion code',
+            errorText: errorText,
+            filled: true,
+            fillColor: const Color(0xFFECF1F6),
+            prefixIcon: const Icon(
+              Icons.local_offer_outlined,
+              color: Color(0xFF2852AF),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  enabled: appliedCode == null && !isLoading,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    hintText: 'Enter code',
-                    errorText: errorText,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                height: 52,
-                child: OutlinedButton(
-                  onPressed: isLoading
-                      ? null
-                      : appliedCode == null
-                      ? onApply
-                      : onClear,
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(appliedCode == null ? 'Apply' : 'Clear'),
-                ),
-              ),
-            ],
-          ),
-          if (appliedCode != null) ...[
-            const SizedBox(height: 10),
-            Text(
-              '$appliedCode applied',
-              style: const TextStyle(
-                color: AppColors.success,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
+            suffixIcon: SizedBox(
+              width: 76,
+              child: TextButton(
+                onPressed: isLoading
+                    ? null
+                    : isApplied
+                    ? onClear
+                    : onApply,
+                child: isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(isApplied ? 'Clear' : 'Apply'),
               ),
             ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PriceBox extends StatelessWidget {
-  final double subtotal;
-  final double discountAmount;
-  final double vatAmount;
-  final double finalTotal;
-
-  const _PriceBox({
-    required this.subtotal,
-    required this.discountAmount,
-    required this.vatAmount,
-    required this.finalTotal,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.textPrimary,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          _DarkPriceLine(
-            label: 'Subtotal',
-            value: '${_formatNumber(subtotal)} VND',
-          ),
-          if (discountAmount > 0) ...[
-            const SizedBox(height: 8),
-            _DarkPriceLine(
-              label: 'Discount',
-              value: '-${_formatNumber(discountAmount)} VND',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(color: Color(0xFFE8EAEC)),
             ),
-          ],
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(color: Color(0xFFE8EAEC)),
+            ),
+          ),
+        ),
+        if (isApplied) ...[
           const SizedBox(height: 8),
-          _DarkPriceLine(
-            label: 'VAT (10%)',
-            value: '${_formatNumber(vatAmount)} VND',
-          ),
-          const Divider(height: 22, color: Colors.white24),
-          _DarkPriceLine(
-            label: 'Total',
-            value: '${_formatNumber(finalTotal)} VND',
-            strong: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Panel extends StatelessWidget {
-  final Widget child;
-
-  const _Panel({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
-
-class _InfoLine extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _InfoLine({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            label,
+          Text(
+            '$appliedCode applied',
             style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PriceLine extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _PriceLine({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
+              color: Color(0xFF17A673),
+              fontSize: 13,
+              fontFamily: 'Plus Jakarta Sans',
               fontWeight: FontWeight.w600,
             ),
           ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
+        ],
       ],
     );
   }
 }
 
-class _DarkPriceLine extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool strong;
+class _PaymentActionBar extends StatelessWidget {
+  final String? errorText;
+  final bool isLoading;
+  final VoidCallback onPressed;
 
-  const _DarkPriceLine({
-    required this.label,
-    required this.value,
-    this.strong = false,
+  const _PaymentActionBar({
+    required this.errorText,
+    required this.isLoading,
+    required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: strong ? 1 : 0.68),
-              fontSize: strong ? 16 : 13,
-              fontWeight: strong ? FontWeight.w800 : FontWeight.w600,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, -8),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (errorText != null) ...[
+              Text(
+                errorText!,
+                style: const TextStyle(
+                  color: AppColors.danger,
+                  fontSize: 13,
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : onPressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2852AF),
+                  foregroundColor: const Color(0xFFFEFEFE),
+                  minimumSize: const Size(0, 54),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Select Payment',
+                        style: TextStyle(
+                          color: Color(0xFFFEFEFE),
+                          fontSize: 16,
+                          fontFamily: 'Jost',
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.08,
+                        ),
+                      ),
+              ),
             ),
-          ),
+          ],
         ),
-        Text(
-          value,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: strong ? 18 : 13,
-            fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -621,6 +782,33 @@ String _formatNumber(double number) {
       .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
 }
 
-String _formatDate(DateTime date) {
-  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+String _formatDateRange(DateTimeRange range) {
+  final start = range.start;
+  final end = range.end;
+  if (start.year == end.year && start.month == end.month) {
+    return '${start.day} - ${end.day} ${_monthName(end.month)} ${end.year}';
+  }
+  return '${_formatShortDate(start)} - ${_formatShortDate(end)}';
+}
+
+String _formatShortDate(DateTime date) {
+  return '${date.day} ${_monthName(date.month)} ${date.year}';
+}
+
+String _monthName(int month) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return months[month - 1];
 }

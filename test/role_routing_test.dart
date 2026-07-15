@@ -4,6 +4,8 @@ import 'package:hotel_system_management/core/models/user_model.dart';
 import 'package:hotel_system_management/features/home/view/home_screen.dart';
 import 'package:hotel_system_management/features/login/controller/login_controller.dart';
 import 'package:hotel_system_management/features/login/view/login_screen.dart';
+import 'package:hotel_system_management/features/otp/controller/otp_controller.dart';
+import 'package:hotel_system_management/features/otp/view/otp_screen.dart';
 import 'package:hotel_system_management/main.dart';
 import 'package:hotel_system_management/screens/admin/admin_screen.dart';
 import 'package:hotel_system_management/screens/staff/staff_home_screen.dart';
@@ -33,6 +35,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1));
     });
 
+    if (role.name == 'customer') continue;
+
     testWidgets('${role.name} login opens ${role.screen}', (tester) async {
       await tester.pumpWidget(
         MyApp(loginController: _RoleLoginController(role.user)),
@@ -51,6 +55,28 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1));
     });
   }
+
+  testWidgets('customer password login opens OTP before Home', (tester) async {
+    await tester.pumpWidget(
+      MyApp(
+        loginController: _RoleLoginController(_user()),
+        otpController: _SuccessfulOtpController(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'customer@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'password');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OtpScreen), findsOneWidget);
+    expect(find.byType(HomeScreen), findsNothing);
+  });
 
   testWidgets('staff logout clears session and returns to login', (
     tester,
@@ -114,4 +140,9 @@ class _RoleLoginController extends LoginController {
   }) async {
     return user;
   }
+}
+
+class _SuccessfulOtpController extends OtpController {
+  @override
+  Future<String> sendOtp(String email) async => 'OTP sent';
 }

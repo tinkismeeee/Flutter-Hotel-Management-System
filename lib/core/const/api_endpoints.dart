@@ -4,6 +4,9 @@ class ApiEndpoints {
   static const String unsplashRooms =
       "$unsplashBaseUrl/search/photos/?client_id=$clientId&query=room&per_page=30";
   static const String baseUrl = "http://54.91.41.3:5000/api";
+  static const String otpBaseUrl = "http://52.221.235.126:3001";
+  static const String sendOtp = "$otpBaseUrl/send-otp";
+  static const String verifyOtp = "$otpBaseUrl/verify-otp";
   static const String customer = "$baseUrl/customers";
   static const String customerUpdatePassword = "$customer/update-password";
   static const String room = "$baseUrl/rooms";
@@ -25,4 +28,26 @@ class ApiEndpoints {
   static String paymentByBooking(int bookingId) =>
       "$payment/booking/$bookingId";
   static String reviewsByRoom(int roomId) => "$review/room/$roomId";
+  static Uri roomBookedRanges({
+    required int roomId,
+    required DateTime from,
+    required DateTime to,
+  }) {
+    return Uri.parse(
+      "$room/$roomId/booked-ranges",
+    ).replace(queryParameters: {'from': _utcDate(from), 'to': _utcDate(to)});
+  }
+
+  static String reviewEligibility({
+    required int userId,
+    required int roomId,
+    int? bookingId,
+  }) =>
+      "$review/eligibility?userId=$userId&roomId=$roomId"
+      "${bookingId == null ? '' : '&bookingId=$bookingId'}";
+  static String bookingsByUser(int userId) => "$booking/user/$userId";
+
+  static String _utcDate(DateTime date) {
+    return DateTime.utc(date.year, date.month, date.day).toIso8601String();
+  }
 }

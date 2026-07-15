@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:google_sign_in/google_sign_in.dart';
@@ -5,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/const/api_endpoints.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/network/api_client.dart';
 
 typedef HttpPost =
     Future<http.Response> Function(
@@ -25,20 +27,26 @@ class GoogleLoginCanceled implements Exception {
 
 class LoginController {
   static const _adminEmail = 'admin@gmail.com';
+  static const _requestTimeout = Duration(seconds: 15);
 
-  final HttpPost _post;
+  final http.Client client;
   final GoogleTokenProvider _googleTokenProvider;
   final String _adminPassword;
+  late final HttpPost _post;
 
   LoginController({
+    http.Client? client,
     HttpPost? post,
     GoogleTokenProvider? googleTokenProvider,
     String? adminPassword,
-  }) : _post = post ?? http.post,
+  }) : client = client ?? apiClient,
        _googleTokenProvider =
            googleTokenProvider ?? GoogleSignInTokenProvider.instance.getIdToken,
        _adminPassword =
-           adminPassword ?? const String.fromEnvironment('DEMO_ADMIN_PASSWORD');
+           adminPassword ??
+           const String.fromEnvironment('DEMO_ADMIN_PASSWORD') {
+    _post = post ?? this.client.post;
+  }
 
   Future<UserModel> login({
     required String email,
@@ -60,66 +68,40 @@ class LoginController {
         dateOfBirth: '',
         isAdmin: true,
       );
-      if (rememberPassword) {
-        await UserModel.saveCurrentUser(admin);
-      } else {
-        await UserModel.clearCurrentUser();
-      }
+      await _persistByPreference(admin, rememberPassword);
       return admin;
     }
 
-    final response = await _post(
-      Uri.parse(ApiEndpoints.customerLogin),
-      headers: const {'Content-Type': 'application/json'},
-      body: json.encode({'email': email, 'password': password}),
-    );
-    var isStaffLogin = false;
-    var data = json.decode(response.body);
-    if (data is! Map<String, dynamic>) {
-      throw Exception('Invalid server response');
-    }
-    if (response.statusCode != 200) {
-      if (response.statusCode != 401) {
-        throw Exception(
-          (data['message'] ?? data['error'])?.toString() ??
-              'Invalid email or password',
-        );
-      }
-
-      final staffResponse = await _post(
-        Uri.parse(ApiEndpoints.staffLogin),
-        headers: const {'Content-Type': 'application/json'},
-        body: json.encode({'email': email, 'password': password}),
-      );
-      data = json.decode(staffResponse.body);
-      if (data is! Map<String, dynamic>) {
-        throw Exception('Invalid server response');
-      }
-      if (staffResponse.statusCode != 200) {
-        throw Exception(
-          (data['message'] ?? data['error'])?.toString() ??
-              'Invalid email or password',
-        );
-      }
-      isStaffLogin = true;
-    }
-    final userJson = data['user'];
-    if (userJson is! Map<String, dynamic>) {
-      throw Exception('Invalid login response');
-    }
-    final user = UserModel.fromJson({
-      ...userJson,
-      'is_admin': false,
-      'is_staff': isStaffLogin && userJson['is_staff'] == true,
+    final customerResponse = await _postJson(ApiEndpoints.customerLogin, {
+      'email': email,
+      'password': password,
     });
 
-    if (rememberPassword) {
-      await UserModel.saveCurrentUser(user);
-    } else {
-      await UserModel.clearCurrentUser();
+    if (customerResponse.statusCode == 401) {
+      final staffResponse = await _postJson(ApiEndpoints.staffLogin, {
+        'email': email,
+        'password': password,
+      });
+      final staffData = _decodeResponse(staffResponse);
+      _requireSuccess(staffResponse, staffData, const {200});
+
+      final staff = _userFromResponse(
+        staffData,
+        invalidMessage: 'Invalid staff login response',
+        isStaff: true,
+      );
+      await _persistByPreference(staff, rememberPassword);
+      return staff;
     }
 
-    return user;
+    final customerData = _decodeResponse(customerResponse);
+    _requireSuccess(customerResponse, customerData, const {200});
+    final customer = _userFromResponse(
+      customerData,
+      invalidMessage: 'Invalid customer login response',
+    );
+    await UserModel.clearCurrentUser();
+    return customer;
   }
 
   Future<UserModel> googleLogin() async {
@@ -132,32 +114,93 @@ class LoginController {
       throw Exception('Google sign-in did not return an ID token.');
     }
 
-    final response = await _post(
-      Uri.parse(ApiEndpoints.customerGoogleLogin),
-      headers: const {'Content-Type': 'application/json'},
-      body: json.encode({'idToken': idToken}),
-    );
-    final data = json.decode(response.body);
-    if (data is! Map<String, dynamic>) {
-      throw Exception('Invalid server response');
-    }
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception(
-        (data['message'] ?? data['error'])?.toString() ?? 'Google login failed',
-      );
-    }
-    final userJson = data['user'];
-    if (userJson is! Map<String, dynamic>) {
-      throw Exception('Invalid Google login response');
-    }
-
-    final user = UserModel.fromJson({
-      ...userJson,
-      'is_admin': false,
-      'is_staff': false,
+    final response = await _postJson(ApiEndpoints.customerGoogleLogin, {
+      'idToken': idToken,
     });
+    final data = _decodeResponse(response);
+    _requireSuccess(response, data, const {
+      200,
+      201,
+    }, fallback: 'Google login failed');
+
+    final user = _userFromResponse(
+      data,
+      invalidMessage: 'Invalid Google login response',
+    );
     await UserModel.saveCurrentUser(user);
     return user;
+  }
+
+  Future<http.Response> _postJson(
+    String endpoint,
+    Map<String, String> body,
+  ) async {
+    try {
+      return await _post(
+        Uri.parse(endpoint),
+        headers: const {'Content-Type': 'application/json'},
+        body: json.encode(body),
+      ).timeout(_requestTimeout);
+    } on TimeoutException {
+      throw Exception('Backend request timed out. Please try again.');
+    } on http.ClientException {
+      throw Exception('Cannot connect to the backend server.');
+    }
+  }
+
+  Map<String, dynamic> _decodeResponse(http.Response response) {
+    dynamic data;
+    try {
+      data = json.decode(response.body);
+    } on FormatException {
+      throw Exception('Backend server returned an invalid response.');
+    }
+
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Backend server returned an invalid response.');
+    }
+    return data;
+  }
+
+  void _requireSuccess(
+    http.Response response,
+    Map<String, dynamic> data,
+    Set<int> successCodes, {
+    String fallback = 'Invalid email or password',
+  }) {
+    if (!successCodes.contains(response.statusCode)) {
+      throw Exception(
+        (data['message'] ?? data['error'])?.toString() ?? fallback,
+      );
+    }
+  }
+
+  UserModel _userFromResponse(
+    Map<String, dynamic> data, {
+    required String invalidMessage,
+    bool isStaff = false,
+  }) {
+    final userJson = data['user'];
+    if (userJson is! Map<String, dynamic>) {
+      throw Exception(invalidMessage);
+    }
+
+    return UserModel.fromJson({
+      ...userJson,
+      'is_admin': false,
+      'is_staff': isStaff,
+    });
+  }
+
+  Future<void> _persistByPreference(
+    UserModel user,
+    bool rememberPassword,
+  ) async {
+    if (rememberPassword) {
+      await UserModel.saveCurrentUser(user);
+    } else {
+      await UserModel.clearCurrentUser();
+    }
   }
 }
 

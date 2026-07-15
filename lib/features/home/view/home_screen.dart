@@ -15,7 +15,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
   final HomeController homeController = HomeController();
   final TextEditingController searchController = TextEditingController();
   final roomTypes = const [
@@ -71,32 +70,32 @@ class _HomeScreenState extends State<HomeScreen> {
     return data;
   }
 
-  void filterRooms(String type) {
-    setState(() {
-      selectedType = type;
-      filteredRooms = applyFilters(rooms);
-    });
-  }
+  Future<void> openFilterSheet() async {
+    final result =
+        await showModalBottomSheet<
+          ({String type, String status, RangeValues priceRange})
+        >(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => _FilterSheet(
+            roomTypes: roomTypes,
+            roomStatuses: roomStatuses,
+            selectedType: selectedType,
+            selectedStatus: selectedStatus,
+            minPrice: minPrice,
+            maxPrice: maxPrice,
+            selectedPriceRange: selectedPriceRange,
+          ),
+        );
 
-  void filterRoomsByStatus(String status) {
-    setState(() {
-      selectedStatus = status;
-      filteredRooms = applyFilters(rooms);
-    });
-  }
+    if (result == null || !mounted) return;
 
-  void filterRoomsByPrice(RangeValues range) {
     setState(() {
-      selectedPriceRange = range;
-      filteredRooms = applyFilters(rooms);
-    });
-  }
-
-  void resetFilters() {
-    setState(() {
-      selectedType = 'All';
-      selectedStatus = 'All Status';
-      selectedPriceRange = RangeValues(minPrice, maxPrice);
+      selectedType = result.type;
+      selectedStatus = result.status;
+      selectedPriceRange = result.priceRange;
       filteredRooms = applyFilters(rooms);
     });
   }
@@ -150,21 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: scaffoldKey,
       backgroundColor: const Color(0xFFFEFEFE),
-      drawer: _FilterDrawer(
-        roomTypes: roomTypes,
-        roomStatuses: roomStatuses,
-        selectedType: selectedType,
-        selectedStatus: selectedStatus,
-        minPrice: minPrice,
-        maxPrice: maxPrice,
-        selectedPriceRange: selectedPriceRange,
-        onTypeSelected: filterRooms,
-        onStatusSelected: filterRoomsByStatus,
-        onPriceChanged: filterRoomsByPrice,
-        onReset: resetFilters,
-      ),
       body: SafeArea(
         child: FutureBuilder<HomeData>(
           future: homeFuture,
@@ -206,9 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       user: widget.user,
                       searchController: searchController,
                       onSearchChanged: searchRooms,
-                      onFilterPressed: () {
-                        scaffoldKey.currentState?.openDrawer();
-                      },
+                      onFilterPressed: openFilterSheet,
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -493,7 +476,7 @@ class _SummaryItem extends StatelessWidget {
   }
 }
 
-class _FilterDrawer extends StatelessWidget {
+class _FilterSheet extends StatefulWidget {
   final List<String> roomTypes;
   final List<String> roomStatuses;
   final String selectedType;
@@ -501,12 +484,8 @@ class _FilterDrawer extends StatelessWidget {
   final double minPrice;
   final double maxPrice;
   final RangeValues selectedPriceRange;
-  final ValueChanged<String> onTypeSelected;
-  final ValueChanged<String> onStatusSelected;
-  final ValueChanged<RangeValues> onPriceChanged;
-  final VoidCallback onReset;
 
-  const _FilterDrawer({
+  const _FilterSheet({
     required this.roomTypes,
     required this.roomStatuses,
     required this.selectedType,
@@ -514,197 +493,332 @@ class _FilterDrawer extends StatelessWidget {
     required this.minPrice,
     required this.maxPrice,
     required this.selectedPriceRange,
-    required this.onTypeSelected,
-    required this.onStatusSelected,
-    required this.onPriceChanged,
-    required this.onReset,
   });
 
   @override
+  State<_FilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends State<_FilterSheet> {
+  late String selectedType;
+  late String selectedStatus;
+  late RangeValues selectedPriceRange;
+
+  bool get canSlide => widget.maxPrice > widget.minPrice;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedType = widget.selectedType;
+    selectedStatus = widget.selectedStatus;
+    selectedPriceRange = widget.selectedPriceRange;
+  }
+
+  void reset() {
+    setState(() {
+      selectedType = 'All';
+      selectedStatus = 'All Status';
+      selectedPriceRange = RangeValues(widget.minPrice, widget.maxPrice);
+    });
+  }
+
+  void apply() {
+    Navigator.of(context).pop((
+      type: selectedType,
+      status: selectedStatus,
+      priceRange: selectedPriceRange,
+    ));
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Drawer(
-      backgroundColor: AppColors.background,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Filters',
+    final height = MediaQuery.sizeOf(context).height * 0.82;
+
+    return Container(
+      height: height,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFEFEFE),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          Container(
+            width: 60,
+            height: 5,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE3E9ED),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 17, 24, 18),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Text(
+                  'Filter By',
+                  style: TextStyle(
+                    color: Color(0xFF171725),
+                    fontSize: 18,
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontWeight: FontWeight.w600,
+                    height: 1.30,
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: reset,
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF2852AF),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    child: const Text(
+                      'Reset',
                       style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFF3F3F3)),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _FilterSectionTitle(
+                    title: 'Room type',
+                    subtitle: selectedType == 'All'
+                        ? 'All room categories'
+                        : selectedType,
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: widget.roomTypes.map((type) {
+                      return _FilterChoice(
+                        label: type,
+                        selected: selectedType == type,
+                        onSelected: () => setState(() => selectedType = type),
+                      );
+                    }).toList(),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 28),
+                    child: Divider(height: 1, color: Color(0xFFE3E9ED)),
+                  ),
+                  _FilterSectionTitle(
+                    title: 'Price',
+                    subtitle: canSlide
+                        ? '${_formatRoomPrice(selectedPriceRange.start.toString())} - ${_formatRoomPrice(selectedPriceRange.end.toString())} VND'
+                        : 'No price range',
+                  ),
+                  const SizedBox(height: 12),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: const Color(0xFF2852AF),
+                      inactiveTrackColor: const Color(0xFFE3E9ED),
+                      thumbColor: const Color(0xFFFEFEFE),
+                      overlayColor: const Color(
+                        0xFF2852AF,
+                      ).withValues(alpha: 0.12),
+                      trackHeight: 4,
+                      rangeThumbShape: const RoundRangeSliderThumbShape(
+                        enabledThumbRadius: 10,
+                        elevation: 2,
+                        pressedElevation: 4,
+                      ),
+                    ),
+                    child: RangeSlider(
+                      values: selectedPriceRange,
+                      min: widget.minPrice,
+                      max: canSlide ? widget.maxPrice : widget.minPrice + 1,
+                      divisions: canSlide ? 20 : null,
+                      onChanged: canSlide
+                          ? (value) {
+                              setState(() => selectedPriceRange = value);
+                            }
+                          : null,
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${_formatRoomPrice(widget.minPrice.toString())} VND',
+                        style: const TextStyle(
+                          color: Color(0xFF9CA4AB),
+                          fontSize: 12,
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      Text(
+                        '${_formatRoomPrice(widget.maxPrice.toString())} VND',
+                        style: const TextStyle(
+                          color: Color(0xFF9CA4AB),
+                          fontSize: 12,
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 28),
+                    child: Divider(height: 1, color: Color(0xFFE3E9ED)),
+                  ),
+                  _FilterSectionTitle(
+                    title: 'Room status',
+                    subtitle: selectedStatus == 'All Status'
+                        ? 'Any availability'
+                        : selectedStatus,
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: widget.roomStatuses.map((status) {
+                      return _FilterChoice(
+                        label: status,
+                        selected: selectedStatus == status,
+                        onSelected: () {
+                          setState(() => selectedStatus = status);
+                        },
+                      );
+                    }).toList(),
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
-              _DrawerFilterSection(
-                title: 'Room type',
-                labels: roomTypes,
-                selectedLabel: selectedType,
-                onSelected: onTypeSelected,
-              ),
-              const SizedBox(height: 24),
-              _DrawerFilterSection(
-                title: 'Room status',
-                labels: roomStatuses,
-                selectedLabel: selectedStatus,
-                onSelected: onStatusSelected,
-              ),
-              const SizedBox(height: 24),
-              _DrawerPriceSection(
-                minPrice: minPrice,
-                maxPrice: maxPrice,
-                selectedPriceRange: selectedPriceRange,
-                onChanged: onPriceChanged,
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onReset,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Reset filters'),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEFEFE),
+              border: const Border(top: BorderSide(color: Color(0xFFF3F3F3))),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF171725).withValues(alpha: 0.06),
+                  blurRadius: 20,
+                  offset: const Offset(0, -6),
+                ),
+              ],
+            ),
+            child: SizedBox(
+              height: 56,
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: apply,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2852AF),
+                  foregroundColor: const Color(0xFFFEFEFE),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Apply Filter',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontFamily: 'Jost',
+                    fontWeight: FontWeight.w600,
+                    height: 1.50,
+                    letterSpacing: 0.08,
+                  ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-class _DrawerFilterSection extends StatelessWidget {
+class _FilterSectionTitle extends StatelessWidget {
   final String title;
-  final List<String> labels;
-  final String selectedLabel;
-  final ValueChanged<String> onSelected;
+  final String subtitle;
 
-  const _DrawerFilterSection({
-    required this.title,
-    required this.labels,
-    required this.selectedLabel,
-    required this.onSelected,
-  });
+  const _FilterSectionTitle({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF171725),
+              fontSize: 14,
+              fontFamily: 'Plus Jakarta Sans',
+              fontWeight: FontWeight.w500,
+              height: 1.30,
+            ),
           ),
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: labels.map((label) {
-            final selected = label == selectedLabel;
-            return ChoiceChip(
-              label: Text(label),
-              selected: selected,
-              onSelected: (_) => onSelected(label),
-              selectedColor: AppColors.primary,
-              backgroundColor: AppColors.surface,
-              side: BorderSide(
-                color: selected ? AppColors.primary : AppColors.border,
-              ),
-              labelStyle: TextStyle(
-                color: selected ? AppColors.background : AppColors.textPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-            );
-          }).toList(),
+        const SizedBox(width: 16),
+        Flexible(
+          child: Text(
+            subtitle,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: Color(0xFF9CA4AB),
+              fontSize: 13,
+              fontFamily: 'Plus Jakarta Sans',
+              fontWeight: FontWeight.w400,
+              height: 1.40,
+            ),
+          ),
         ),
       ],
     );
   }
 }
 
-class _DrawerPriceSection extends StatelessWidget {
-  final double minPrice;
-  final double maxPrice;
-  final RangeValues selectedPriceRange;
-  final ValueChanged<RangeValues> onChanged;
+class _FilterChoice extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onSelected;
 
-  const _DrawerPriceSection({
-    required this.minPrice,
-    required this.maxPrice,
-    required this.selectedPriceRange,
-    required this.onChanged,
+  const _FilterChoice({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
   });
 
   @override
   Widget build(BuildContext context) {
-    final canSlide = maxPrice > minPrice;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Price range',
-          style: TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                canSlide
-                    ? '${_formatRoomPrice(selectedPriceRange.start.toString())} - ${_formatRoomPrice(selectedPriceRange.end.toString())} VND'
-                    : 'No price range',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              RangeSlider(
-                values: selectedPriceRange,
-                min: minPrice,
-                max: canSlide ? maxPrice : minPrice + 1,
-                divisions: canSlide ? 20 : null,
-                labels: RangeLabels(
-                  _formatRoomPrice(selectedPriceRange.start.toString()),
-                  _formatRoomPrice(selectedPriceRange.end.toString()),
-                ),
-                onChanged: canSlide ? onChanged : null,
-              ),
-            ],
-          ),
-        ),
-      ],
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      showCheckmark: false,
+      selectedColor: const Color(0xFF2852AF),
+      backgroundColor: const Color(0xFFFBFBFD),
+      side: BorderSide(
+        color: selected ? const Color(0xFF2852AF) : const Color(0xFFF3F3F3),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      labelStyle: TextStyle(
+        color: selected ? const Color(0xFFFEFEFE) : const Color(0xFF2852AF),
+        fontSize: 14,
+        fontFamily: 'Plus Jakarta Sans',
+        fontWeight: FontWeight.w400,
+      ),
     );
   }
 }
@@ -735,7 +849,7 @@ class _RoomCard extends StatelessWidget {
             border: Border.all(color: AppColors.border),
             boxShadow: [
               BoxShadow(
-                color: AppColors.textPrimary.withOpacity(0.06),
+                color: AppColors.textPrimary.withValues(alpha: 0.06),
                 blurRadius: 18,
                 offset: const Offset(0, 8),
               ),
@@ -815,7 +929,7 @@ class _RoomImageFrame extends StatelessWidget {
         border: Border.all(color: AppColors.background, width: 3),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textPrimary.withOpacity(0.10),
+            color: AppColors.textPrimary.withValues(alpha: 0.10),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -976,7 +1090,7 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
