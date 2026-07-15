@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/room_type.dart';
 import '../../services/room_type_service.dart';
 import '../../utils/app_colors.dart';
+import '../widgets/list_query_bar.dart';
 import 'add_room_type_screen.dart';
 import 'edit_room_type_screen.dart';
 
@@ -14,6 +15,9 @@ class RoomTypeListScreen extends StatefulWidget {
 
 class _RoomTypeListScreenState extends State<RoomTypeListScreen> {
   late Future<List<RoomType>> roomTypeFuture;
+  String searchQuery = '';
+  String sortBy = 'name';
+  String filterBy = 'all';
 
   @override
   void initState() {
@@ -25,6 +29,29 @@ class _RoomTypeListScreenState extends State<RoomTypeListScreen> {
     setState(() {
       roomTypeFuture = RoomTypeService.getRoomTypes();
     });
+  }
+
+  List<RoomType> applyQuery(List<RoomType> roomTypes) {
+    final query = searchQuery.trim().toLowerCase();
+    final result = roomTypes.where((roomType) {
+      final matchesSearch =
+          query.isEmpty ||
+          roomType.name.toLowerCase().contains(query) ||
+          roomType.description.toLowerCase().contains(query) ||
+          roomType.roomTypeId.toString().contains(query);
+      final hasDescription = roomType.description.trim().isNotEmpty;
+      final matchesFilter =
+          filterBy == 'all' ||
+          (filterBy == 'described' && hasDescription) ||
+          (filterBy == 'missing_description' && !hasDescription);
+      return matchesSearch && matchesFilter;
+    }).toList();
+
+    result.sort((a, b) {
+      if (sortBy == 'newest') return b.roomTypeId.compareTo(a.roomTypeId);
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return result;
   }
 
   Future<void> goToAdd() async {
@@ -222,9 +249,10 @@ class _RoomTypeListScreenState extends State<RoomTypeListScreen> {
                     );
                   }
 
-                  final roomTypes = snapshot.data ?? [];
+                  final allRoomTypes = snapshot.data ?? [];
+                  final roomTypes = applyQuery(allRoomTypes);
 
-                  if (roomTypes.isEmpty) {
+                  if (allRoomTypes.isEmpty) {
                     return const Center(
                       child: Text(
                         'Không có loại phòng',
@@ -233,12 +261,36 @@ class _RoomTypeListScreenState extends State<RoomTypeListScreen> {
                     );
                   }
 
-                  return ListView.builder(
+                  return ListView(
                     padding: const EdgeInsets.all(20),
-                    itemCount: roomTypes.length,
-                    itemBuilder: (context, index) {
-                      return roomTypeCard(roomTypes[index]);
-                    },
+                    children: [
+                      ListQueryBar(
+                        searchHint: 'Tìm tên, mô tả, ID...',
+                        onSearchChanged: (value) =>
+                            setState(() => searchQuery = value),
+                        sortValue: sortBy,
+                        sortOptions: const {
+                          'name': 'Tên A-Z',
+                          'newest': 'Mới nhất',
+                        },
+                        onSortChanged: (value) =>
+                            setState(() => sortBy = value ?? 'name'),
+                        filterValue: filterBy,
+                        filterOptions: const {
+                          'all': 'Tất cả',
+                          'described': 'Có mô tả',
+                          'missing_description': 'Thiếu mô tả',
+                        },
+                        onFilterChanged: (value) =>
+                            setState(() => filterBy = value ?? 'all'),
+                        resultCount: roomTypes.length,
+                      ),
+                      const SizedBox(height: 16),
+                      if (roomTypes.isEmpty)
+                        const Center(child: Text('Không có loại phòng phù hợp'))
+                      else
+                        ...roomTypes.map(roomTypeCard),
+                    ],
                   );
                 },
               ),

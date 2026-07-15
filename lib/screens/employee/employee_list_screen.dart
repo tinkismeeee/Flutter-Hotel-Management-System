@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/staff.dart';
 import '../../services/staff_service.dart';
 import '../../utils/app_colors.dart';
+import '../widgets/list_query_bar.dart';
 import 'add_employee_screen.dart';
 import 'edit_employee_screen.dart';
 
@@ -14,6 +15,9 @@ class EmployeeListScreen extends StatefulWidget {
 
 class _EmployeeListScreenState extends State<EmployeeListScreen> {
   late Future<List<Staff>> staffFuture;
+  String searchQuery = '';
+  String sortBy = 'name';
+  String filterBy = 'all';
 
   @override
   void initState() {
@@ -25,6 +29,34 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     setState(() {
       staffFuture = StaffService.getStaffs();
     });
+  }
+
+  List<Staff> applyQuery(List<Staff> staffs) {
+    final query = searchQuery.trim().toLowerCase();
+    final result = staffs.where((staff) {
+      final matchesSearch =
+          query.isEmpty ||
+          '${staff.firstName} ${staff.lastName}'.toLowerCase().contains(
+            query,
+          ) ||
+          staff.username.toLowerCase().contains(query) ||
+          staff.email.toLowerCase().contains(query) ||
+          staff.phoneNumber.toLowerCase().contains(query);
+      final matchesFilter =
+          filterBy == 'all' ||
+          (filterBy == 'active' && staff.isActive) ||
+          (filterBy == 'inactive' && !staff.isActive);
+      return matchesSearch && matchesFilter;
+    }).toList();
+
+    result.sort((a, b) {
+      if (sortBy == 'newest') return b.userId.compareTo(a.userId);
+      if (sortBy == 'email') return a.email.compareTo(b.email);
+      return '${a.firstName} ${a.lastName}'.compareTo(
+        '${b.firstName} ${b.lastName}',
+      );
+    });
+    return result;
   }
 
   Future<void> goToAdd() async {
@@ -223,14 +255,39 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     );
                   }
 
-                  final staffs = snapshot.data ?? [];
+                  final staffs = applyQuery(snapshot.data ?? []);
 
-                  return ListView.builder(
+                  return ListView(
                     padding: const EdgeInsets.all(20),
-                    itemCount: staffs.length,
-                    itemBuilder: (context, index) {
-                      return staffCard(staffs[index]);
-                    },
+                    children: [
+                      ListQueryBar(
+                        searchHint: 'Tìm tên, username, email...',
+                        onSearchChanged: (value) =>
+                            setState(() => searchQuery = value),
+                        sortValue: sortBy,
+                        sortOptions: const {
+                          'name': 'Tên A-Z',
+                          'email': 'Email A-Z',
+                          'newest': 'Mới nhất',
+                        },
+                        onSortChanged: (value) =>
+                            setState(() => sortBy = value ?? 'name'),
+                        filterValue: filterBy,
+                        filterOptions: const {
+                          'all': 'Tất cả',
+                          'active': 'Đang hoạt động',
+                          'inactive': 'Đã khóa',
+                        },
+                        onFilterChanged: (value) =>
+                            setState(() => filterBy = value ?? 'all'),
+                        resultCount: staffs.length,
+                      ),
+                      const SizedBox(height: 16),
+                      if (staffs.isEmpty)
+                        const Center(child: Text('Không có nhân viên phù hợp'))
+                      else
+                        ...staffs.map(staffCard),
+                    ],
                   );
                 },
               ),

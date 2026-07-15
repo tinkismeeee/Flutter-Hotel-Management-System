@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/hotel_service.dart';
 import '../../services/hotel_service_service.dart';
 import '../../utils/app_colors.dart';
+import '../widgets/list_query_bar.dart';
 import 'add_service_screen.dart';
 import 'edit_service_screen.dart';
 
@@ -14,6 +15,9 @@ class ServiceListScreen extends StatefulWidget {
 
 class _ServiceListScreenState extends State<ServiceListScreen> {
   late Future<List<HotelService>> serviceFuture;
+  String searchQuery = '';
+  String sortBy = 'name';
+  String filterBy = 'all';
 
   @override
   void initState() {
@@ -25,6 +29,29 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     setState(() {
       serviceFuture = HotelServiceService.getServices();
     });
+  }
+
+  List<HotelService> applyQuery(List<HotelService> services) {
+    final query = searchQuery.trim().toLowerCase();
+    final result = services.where((service) {
+      final matchesSearch =
+          query.isEmpty ||
+          service.name.toLowerCase().contains(query) ||
+          service.serviceCode.toLowerCase().contains(query) ||
+          service.description.toLowerCase().contains(query);
+      final matchesFilter =
+          filterBy == 'all' ||
+          (filterBy == 'available' && service.availability) ||
+          (filterBy == 'unavailable' && !service.availability);
+      return matchesSearch && matchesFilter;
+    }).toList();
+
+    result.sort((a, b) {
+      if (sortBy == 'price_high') return b.price.compareTo(a.price);
+      if (sortBy == 'price_low') return a.price.compareTo(b.price);
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return result;
   }
 
   Future<void> goToAdd() async {
@@ -234,9 +261,10 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                     );
                   }
 
-                  final services = snapshot.data ?? [];
+                  final allServices = snapshot.data ?? [];
+                  final services = applyQuery(allServices);
 
-                  if (services.isEmpty) {
+                  if (allServices.isEmpty) {
                     return const Center(
                       child: Text(
                         'Không có dịch vụ',
@@ -245,12 +273,37 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                     );
                   }
 
-                  return ListView.builder(
+                  return ListView(
                     padding: const EdgeInsets.all(20),
-                    itemCount: services.length,
-                    itemBuilder: (context, index) {
-                      return serviceCard(services[index]);
-                    },
+                    children: [
+                      ListQueryBar(
+                        searchHint: 'Tìm tên, mã dịch vụ...',
+                        onSearchChanged: (value) =>
+                            setState(() => searchQuery = value),
+                        sortValue: sortBy,
+                        sortOptions: const {
+                          'name': 'Tên A-Z',
+                          'price_low': 'Giá thấp nhất',
+                          'price_high': 'Giá cao nhất',
+                        },
+                        onSortChanged: (value) =>
+                            setState(() => sortBy = value ?? 'name'),
+                        filterValue: filterBy,
+                        filterOptions: const {
+                          'all': 'Tất cả',
+                          'available': 'Khả dụng',
+                          'unavailable': 'Không khả dụng',
+                        },
+                        onFilterChanged: (value) =>
+                            setState(() => filterBy = value ?? 'all'),
+                        resultCount: services.length,
+                      ),
+                      const SizedBox(height: 16),
+                      if (services.isEmpty)
+                        const Center(child: Text('Không có dịch vụ phù hợp'))
+                      else
+                        ...services.map(serviceCard),
+                    ],
                   );
                 },
               ),

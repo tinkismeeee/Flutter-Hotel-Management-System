@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/room.dart';
 import '../../services/room_service.dart';
 import '../../utils/app_colors.dart';
+import '../widgets/list_query_bar.dart';
 import 'add_room_screen.dart';
 import 'edit_room_screen.dart';
 
@@ -14,6 +15,9 @@ class RoomListScreen extends StatefulWidget {
 
 class _RoomListScreenState extends State<RoomListScreen> {
   late Future<List<Room>> roomFuture;
+  String searchQuery = '';
+  String sortBy = 'number';
+  String filterBy = 'all';
 
   @override
   void initState() {
@@ -25,6 +29,31 @@ class _RoomListScreenState extends State<RoomListScreen> {
     setState(() {
       roomFuture = RoomService.getRooms();
     });
+  }
+
+  List<Room> applyQuery(List<Room> rooms) {
+    final query = searchQuery.trim().toLowerCase();
+    final result = rooms.where((room) {
+      final matchesSearch =
+          query.isEmpty ||
+          room.roomNumber.toLowerCase().contains(query) ||
+          room.roomTypeName.toLowerCase().contains(query) ||
+          room.floor.toString().contains(query);
+      final matchesFilter =
+          filterBy == 'all' || room.status.toLowerCase() == filterBy;
+      return matchesSearch && matchesFilter;
+    }).toList();
+
+    result.sort((a, b) {
+      if (sortBy == 'price_high') {
+        return b.pricePerNight.compareTo(a.pricePerNight);
+      }
+      if (sortBy == 'price_low') {
+        return a.pricePerNight.compareTo(b.pricePerNight);
+      }
+      return a.roomNumber.compareTo(b.roomNumber);
+    });
+    return result;
   }
 
   Future<void> goToAdd() async {
@@ -226,14 +255,41 @@ class _RoomListScreenState extends State<RoomListScreen> {
                     );
                   }
 
-                  final rooms = snapshot.data ?? [];
+                  final rooms = applyQuery(snapshot.data ?? []);
 
-                  return ListView.builder(
+                  return ListView(
                     padding: const EdgeInsets.all(20),
-                    itemCount: rooms.length,
-                    itemBuilder: (context, index) {
-                      return roomCard(rooms[index]);
-                    },
+                    children: [
+                      ListQueryBar(
+                        searchHint: 'Tìm số phòng, loại phòng, tầng...',
+                        onSearchChanged: (value) =>
+                            setState(() => searchQuery = value),
+                        sortValue: sortBy,
+                        sortOptions: const {
+                          'number': 'Số phòng',
+                          'price_low': 'Giá thấp nhất',
+                          'price_high': 'Giá cao nhất',
+                        },
+                        onSortChanged: (value) =>
+                            setState(() => sortBy = value ?? 'number'),
+                        filterValue: filterBy,
+                        filterOptions: const {
+                          'all': 'Tất cả',
+                          'available': 'Còn trống',
+                          'booked': 'Đã đặt',
+                          'occupied': 'Đang ở',
+                          'maintenance': 'Bảo trì',
+                        },
+                        onFilterChanged: (value) =>
+                            setState(() => filterBy = value ?? 'all'),
+                        resultCount: rooms.length,
+                      ),
+                      const SizedBox(height: 16),
+                      if (rooms.isEmpty)
+                        const Center(child: Text('Không có phòng phù hợp'))
+                      else
+                        ...rooms.map(roomCard),
+                    ],
                   );
                 },
               ),

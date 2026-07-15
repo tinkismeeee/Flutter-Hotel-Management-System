@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/promotion.dart';
 import '../../services/promotion_service.dart';
 import '../../utils/app_colors.dart';
+import '../widgets/list_query_bar.dart';
 import 'add_promotion_screen.dart';
 import 'edit_promotion_screen.dart';
 
@@ -14,6 +15,9 @@ class PromotionListScreen extends StatefulWidget {
 
 class _PromotionListScreenState extends State<PromotionListScreen> {
   late Future<List<Promotion>> promotionFuture;
+  String searchQuery = '';
+  String sortBy = 'newest';
+  String filterBy = 'all';
 
   @override
   void initState() {
@@ -25,6 +29,33 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
     setState(() {
       promotionFuture = PromotionService.getPromotions();
     });
+  }
+
+  List<Promotion> applyQuery(List<Promotion> promotions) {
+    final query = searchQuery.trim().toLowerCase();
+    final result = promotions.where((promotion) {
+      final matchesSearch =
+          query.isEmpty ||
+          promotion.name.toLowerCase().contains(query) ||
+          promotion.promotionCode.toLowerCase().contains(query) ||
+          promotion.scope.toLowerCase().contains(query);
+      final matchesFilter =
+          filterBy == 'all' ||
+          (filterBy == 'active' && promotion.isActive) ||
+          (filterBy == 'inactive' && !promotion.isActive);
+      return matchesSearch && matchesFilter;
+    }).toList();
+
+    result.sort((a, b) {
+      if (sortBy == 'name') {
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      }
+      if (sortBy == 'discount') {
+        return b.discountValue.compareTo(a.discountValue);
+      }
+      return b.promotionId.compareTo(a.promotionId);
+    });
+    return result;
   }
 
   String shortDate(String value) {
@@ -241,9 +272,10 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
                     );
                   }
 
-                  final promotions = snapshot.data ?? [];
+                  final allPromotions = snapshot.data ?? [];
+                  final promotions = applyQuery(allPromotions);
 
-                  if (promotions.isEmpty) {
+                  if (allPromotions.isEmpty) {
                     return const Center(
                       child: Text(
                         'Không có khuyến mãi',
@@ -252,12 +284,37 @@ class _PromotionListScreenState extends State<PromotionListScreen> {
                     );
                   }
 
-                  return ListView.builder(
+                  return ListView(
                     padding: const EdgeInsets.all(20),
-                    itemCount: promotions.length,
-                    itemBuilder: (context, index) {
-                      return promotionCard(promotions[index]);
-                    },
+                    children: [
+                      ListQueryBar(
+                        searchHint: 'Tìm tên, mã, phạm vi...',
+                        onSearchChanged: (value) =>
+                            setState(() => searchQuery = value),
+                        sortValue: sortBy,
+                        sortOptions: const {
+                          'newest': 'Mới nhất',
+                          'name': 'Tên A-Z',
+                          'discount': 'Giảm giá cao nhất',
+                        },
+                        onSortChanged: (value) =>
+                            setState(() => sortBy = value ?? 'newest'),
+                        filterValue: filterBy,
+                        filterOptions: const {
+                          'all': 'Tất cả',
+                          'active': 'Đang hoạt động',
+                          'inactive': 'Ngừng hoạt động',
+                        },
+                        onFilterChanged: (value) =>
+                            setState(() => filterBy = value ?? 'all'),
+                        resultCount: promotions.length,
+                      ),
+                      const SizedBox(height: 16),
+                      if (promotions.isEmpty)
+                        const Center(child: Text('Không có khuyến mãi phù hợp'))
+                      else
+                        ...promotions.map(promotionCard),
+                    ],
                   );
                 },
               ),

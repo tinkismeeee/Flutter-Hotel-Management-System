@@ -1,0 +1,123 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hotel_system_management/models/booking.dart';
+import 'package:hotel_system_management/models/invoice.dart';
+import 'package:hotel_system_management/screens/booking/booking_list_screen.dart';
+import 'package:hotel_system_management/screens/revenue/invoice_detail_screen.dart';
+import 'package:hotel_system_management/screens/widgets/list_query_bar.dart';
+
+void main() {
+  test('current hotel booking requires an active overlapping stay', () {
+    final current = booking(
+      checkIn: '2026-07-15',
+      checkOut: '2026-07-18',
+      status: 'confirmed',
+    );
+    final checkedOut = booking(
+      checkIn: '2026-07-14',
+      checkOut: '2026-07-16',
+      status: 'confirmed',
+    );
+    final cancelled = booking(
+      checkIn: '2026-07-15',
+      checkOut: '2026-07-18',
+      status: 'cancelled',
+    );
+
+    expect(isCurrentHotelBooking(current, DateTime(2026, 7, 16, 20)), isTrue);
+    expect(isCurrentHotelBooking(checkedOut, DateTime(2026, 7, 16)), isFalse);
+    expect(isCurrentHotelBooking(cancelled, DateTime(2026, 7, 16)), isFalse);
+  });
+
+  testWidgets('list query bar reports search sort and filter changes', (
+    tester,
+  ) async {
+    String? query;
+    String? sort;
+    String? filter;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListQueryBar(
+            searchHint: 'Search',
+            onSearchChanged: (value) => query = value,
+            sortValue: 'name',
+            sortOptions: const {'name': 'Name', 'newest': 'Newest'},
+            onSortChanged: (value) => sort = value,
+            filterValue: 'all',
+            filterOptions: const {'all': 'All', 'active': 'Active'},
+            onFilterChanged: (value) => filter = value,
+            resultCount: 3,
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('listSearchField')),
+      'room 101',
+    );
+    await tester.tap(find.byKey(const ValueKey('sort-name')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Newest').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('filter-all')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Active').last);
+
+    expect(query, 'room 101');
+    expect(sort, 'newest');
+    expect(filter, 'active');
+  });
+
+  testWidgets('invoice detail shows complete cost breakdown', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InvoiceDetailScreen(
+          invoice: Invoice(
+            invoiceId: 12,
+            bookingId: 34,
+            staffId: 5,
+            issueDate: '2026-07-16T10:00:00.000Z',
+            totalRoomCost: 1000000,
+            totalServiceCost: 200000,
+            discountAmount: 50000,
+            finalAmount: 1265000,
+            vatAmount: 115000,
+            paymentMethod: 'PayOS',
+            promotionId: 7,
+            paymentStatus: 'paid',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Hóa đơn #12'), findsOneWidget);
+    expect(find.text('1.265.000 VNĐ'), findsAtLeastNWidgets(1));
+    expect(find.text('PayOS'), findsOneWidget);
+    expect(find.text('#34'), findsOneWidget);
+  });
+}
+
+Booking booking({
+  required String checkIn,
+  required String checkOut,
+  required String status,
+}) {
+  return Booking(
+    bookingId: 1,
+    userId: 1,
+    bookingDate: '2026-07-01',
+    checkIn: checkIn,
+    checkOut: checkOut,
+    status: status,
+    totalGuests: 2,
+    promotionId: null,
+    numberOfDays: 3,
+    numberOfNights: 3,
+    totalPrice: 1000000,
+    username: 'guest',
+    roomIds: const [101],
+  );
+}

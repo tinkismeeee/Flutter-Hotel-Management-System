@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/customer.dart';
 import '../../services/customer_service.dart';
 import '../../utils/app_colors.dart';
+import '../widgets/list_query_bar.dart';
 import 'add_customer_screen.dart';
 import 'edit_customer_screen.dart';
 
@@ -14,6 +15,9 @@ class CustomerListScreen extends StatefulWidget {
 
 class _CustomerListScreenState extends State<CustomerListScreen> {
   late Future<List<Customer>> customerFuture;
+  String searchQuery = '';
+  String sortBy = 'name';
+  String filterBy = 'all';
 
   @override
   void initState() {
@@ -25,6 +29,35 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     setState(() {
       customerFuture = CustomerService.getCustomers();
     });
+  }
+
+  List<Customer> applyQuery(List<Customer> customers) {
+    final query = searchQuery.trim().toLowerCase();
+    final result = customers.where((customer) {
+      final matchesSearch =
+          query.isEmpty ||
+          '${customer.firstName} ${customer.lastName}'.toLowerCase().contains(
+            query,
+          ) ||
+          customer.username.toLowerCase().contains(query) ||
+          customer.email.toLowerCase().contains(query) ||
+          customer.phoneNumber.toLowerCase().contains(query) ||
+          customer.address.toLowerCase().contains(query);
+      final matchesFilter =
+          filterBy == 'all' ||
+          (filterBy == 'active' && customer.isActive) ||
+          (filterBy == 'inactive' && !customer.isActive);
+      return matchesSearch && matchesFilter;
+    }).toList();
+
+    result.sort((a, b) {
+      if (sortBy == 'newest') return b.userId.compareTo(a.userId);
+      if (sortBy == 'email') return a.email.compareTo(b.email);
+      return '${a.firstName} ${a.lastName}'.compareTo(
+        '${b.firstName} ${b.lastName}',
+      );
+    });
+    return result;
   }
 
   Future<void> goToAdd() async {
@@ -234,9 +267,10 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                     );
                   }
 
-                  final customers = snapshot.data ?? [];
+                  final allCustomers = snapshot.data ?? [];
+                  final customers = applyQuery(allCustomers);
 
-                  if (customers.isEmpty) {
+                  if (allCustomers.isEmpty) {
                     return const Center(
                       child: Text(
                         'Không có khách hàng',
@@ -245,12 +279,34 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                     );
                   }
 
-                  return ListView.builder(
+                  return ListView(
                     padding: const EdgeInsets.all(20),
-                    itemCount: customers.length,
-                    itemBuilder: (context, index) {
-                      return customerCard(customers[index]);
-                    },
+                    children: [
+                      ListQueryBar(
+                        searchHint: 'Tìm tên, email, số điện thoại...',
+                        onSearchChanged: (value) =>
+                            setState(() => searchQuery = value),
+                        sortValue: sortBy,
+                        sortOptions: const {
+                          'name': 'Tên A-Z',
+                          'email': 'Email A-Z',
+                          'newest': 'Mới nhất',
+                        },
+                        onSortChanged: (value) =>
+                            setState(() => sortBy = value ?? 'name'),
+                        filterValue: filterBy,
+                        filterOptions: const {
+                          'all': 'Tất cả',
+                          'active': 'Đang hoạt động',
+                          'inactive': 'Đã khóa',
+                        },
+                        onFilterChanged: (value) =>
+                            setState(() => filterBy = value ?? 'all'),
+                        resultCount: customers.length,
+                      ),
+                      const SizedBox(height: 16),
+                      ...customers.map(customerCard),
+                    ],
                   );
                 },
               ),

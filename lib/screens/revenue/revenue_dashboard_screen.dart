@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../../models/invoice.dart';
 import '../../services/invoice_service.dart';
 import '../../utils/app_colors.dart';
+import '../widgets/list_query_bar.dart';
+import 'invoice_detail_screen.dart';
 
 enum RevenueFilterType { all, day, month, year }
 
@@ -21,6 +23,9 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
   DateTime? selectedDate;
   int? selectedMonth;
   int? selectedYear;
+  String searchQuery = '';
+  String sortBy = 'date_desc';
+  String paymentFilter = 'all';
 
   @override
   void initState() {
@@ -60,6 +65,42 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
     }
 
     return invoices;
+  }
+
+  List<Invoice> applyInvoiceQuery(List<Invoice> invoices) {
+    final query = searchQuery.trim().toLowerCase();
+    final result = invoices.where((invoice) {
+      final matchesSearch =
+          query.isEmpty ||
+          invoice.invoiceId.toString().contains(query) ||
+          invoice.bookingId.toString().contains(query) ||
+          invoice.staffId.toString().contains(query) ||
+          invoice.paymentMethod.toLowerCase().contains(query) ||
+          invoice.paymentStatus.toLowerCase().contains(query);
+      final matchesPayment =
+          paymentFilter == 'all' ||
+          invoice.paymentStatus.toLowerCase() == paymentFilter;
+      return matchesSearch && matchesPayment;
+    }).toList();
+
+    result.sort((a, b) {
+      if (sortBy == 'date_asc') return a.date.compareTo(b.date);
+      if (sortBy == 'amount_high') {
+        return b.finalAmount.compareTo(a.finalAmount);
+      }
+      if (sortBy == 'amount_low') {
+        return a.finalAmount.compareTo(b.finalAmount);
+      }
+      return b.date.compareTo(a.date);
+    });
+    return result;
+  }
+
+  void openInvoice(Invoice invoice) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => InvoiceDetailScreen(invoice: invoice)),
+    );
   }
 
   double totalRevenue(List<Invoice> invoices) {
@@ -801,53 +842,63 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
         ),
         const SizedBox(height: 12),
         ...invoices.map((invoice) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: AppColors.gold.withValues(alpha: 0.18),
-                  child: const Icon(
-                    Icons.receipt_rounded,
-                    color: AppColors.gold,
+          return InkWell(
+            key: ValueKey('invoice-${invoice.invoiceId}'),
+            onTap: () => openInvoice(invoice),
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: AppColors.gold.withValues(alpha: 0.18),
+                    child: const Icon(
+                      Icons.receipt_rounded,
+                      color: AppColors.gold,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Invoice #${invoice.invoiceId}',
-                        style: const TextStyle(
-                          color: AppColors.textDark,
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Invoice #${invoice.invoiceId}',
+                          style: const TextStyle(
+                            color: AppColors.textDark,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Booking: ${invoice.bookingId} • Staff: ${invoice.staffId}',
-                        style: const TextStyle(color: AppColors.textGray),
-                      ),
-                      Text(
-                        'Ngày: ${invoice.issueDate.length >= 10 ? invoice.issueDate.substring(0, 10) : invoice.issueDate}',
-                        style: const TextStyle(color: AppColors.textGray),
-                      ),
-                    ],
+                        Text(
+                          'Booking: ${invoice.bookingId} • Staff: ${invoice.staffId}',
+                          style: const TextStyle(color: AppColors.textGray),
+                        ),
+                        Text(
+                          'Ngày: ${invoice.issueDate.length >= 10 ? invoice.issueDate.substring(0, 10) : invoice.issueDate}',
+                          style: const TextStyle(color: AppColors.textGray),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Text(
-                  compactMoney(invoice.finalAmount),
-                  style: const TextStyle(
+                  Text(
+                    compactMoney(invoice.finalAmount),
+                    style: const TextStyle(
+                      color: AppColors.gold,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.chevron_right_rounded,
                     color: AppColors.gold,
-                    fontWeight: FontWeight.bold,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         }),
@@ -856,12 +907,37 @@ class _RevenueDashboardScreenState extends State<RevenueDashboardScreen> {
   }
 
   Widget dashboardContent(List<Invoice> invoices) {
-    final filtered = applyFilter(invoices);
+    final filtered = applyInvoiceQuery(applyFilter(invoices));
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         filterSection(),
+        const SizedBox(height: 16),
+        ListQueryBar(
+          searchHint: 'Tìm hóa đơn, booking, nhân viên...',
+          onSearchChanged: (value) => setState(() => searchQuery = value),
+          sortValue: sortBy,
+          sortOptions: const {
+            'date_desc': 'Ngày mới nhất',
+            'date_asc': 'Ngày cũ nhất',
+            'amount_high': 'Giá trị cao nhất',
+            'amount_low': 'Giá trị thấp nhất',
+          },
+          onSortChanged: (value) =>
+              setState(() => sortBy = value ?? 'date_desc'),
+          filterValue: paymentFilter,
+          filterOptions: const {
+            'all': 'Tất cả thanh toán',
+            'paid': 'Đã thanh toán',
+            'pending': 'Chờ thanh toán',
+            'failed': 'Thanh toán lỗi',
+            'refunded': 'Đã hoàn tiền',
+          },
+          onFilterChanged: (value) =>
+              setState(() => paymentFilter = value ?? 'all'),
+          resultCount: filtered.length,
+        ),
         const SizedBox(height: 22),
         kpiGrid(filtered),
         const SizedBox(height: 22),

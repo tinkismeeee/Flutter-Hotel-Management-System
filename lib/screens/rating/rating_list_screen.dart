@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/rating.dart';
 import '../../services/rating_service.dart';
 import '../../utils/app_colors.dart';
+import '../widgets/list_query_bar.dart';
 import 'edit_rating_screen.dart';
 
 class RatingListScreen extends StatefulWidget {
@@ -14,6 +15,9 @@ class RatingListScreen extends StatefulWidget {
 
 class _RatingListScreenState extends State<RatingListScreen> {
   late Future<List<HotelRating>> ratingFuture;
+  String searchQuery = '';
+  String sortBy = 'newest';
+  String filterBy = 'all';
 
   @override
   void initState() {
@@ -25,6 +29,28 @@ class _RatingListScreenState extends State<RatingListScreen> {
     setState(() {
       ratingFuture = RatingService.getRatings();
     });
+  }
+
+  List<HotelRating> applyQuery(List<HotelRating> ratings) {
+    final query = searchQuery.trim().toLowerCase();
+    final result = ratings.where((rating) {
+      final matchesSearch =
+          query.isEmpty ||
+          customerLabel(rating).toLowerCase().contains(query) ||
+          roomLabel(rating).toLowerCase().contains(query) ||
+          rating.comment.toLowerCase().contains(query) ||
+          rating.bookingId.toString().contains(query);
+      final matchesFilter =
+          filterBy == 'all' || rating.rating.toString() == filterBy;
+      return matchesSearch && matchesFilter;
+    }).toList();
+
+    result.sort((a, b) {
+      if (sortBy == 'rating_high') return b.rating.compareTo(a.rating);
+      if (sortBy == 'rating_low') return a.rating.compareTo(b.rating);
+      return b.createdAt.compareTo(a.createdAt);
+    });
+    return result;
   }
 
   Future<void> goToEdit(HotelRating ratingReview) async {
@@ -186,21 +212,39 @@ class _RatingListScreenState extends State<RatingListScreen> {
   }
 
   Widget ratingList(List<HotelRating> ratings) {
-    if (ratings.isEmpty) {
-      return const Center(
-        child: Text(
-          'Không có đánh giá',
-          style: TextStyle(color: AppColors.textDark),
-        ),
-      );
-    }
+    final filtered = applyQuery(ratings);
 
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.all(20),
-      itemCount: ratings.length,
-      itemBuilder: (context, index) {
-        return ratingCard(ratings[index]);
-      },
+      children: [
+        ListQueryBar(
+          searchHint: 'Tìm khách, phòng, nội dung...',
+          onSearchChanged: (value) => setState(() => searchQuery = value),
+          sortValue: sortBy,
+          sortOptions: const {
+            'newest': 'Mới nhất',
+            'rating_high': 'Điểm cao nhất',
+            'rating_low': 'Điểm thấp nhất',
+          },
+          onSortChanged: (value) => setState(() => sortBy = value ?? 'newest'),
+          filterValue: filterBy,
+          filterOptions: const {
+            'all': 'Tất cả số sao',
+            '5': '5 sao',
+            '4': '4 sao',
+            '3': '3 sao',
+            '2': '2 sao',
+            '1': '1 sao',
+          },
+          onFilterChanged: (value) => setState(() => filterBy = value ?? 'all'),
+          resultCount: filtered.length,
+        ),
+        const SizedBox(height: 16),
+        if (filtered.isEmpty)
+          const Center(child: Text('Không có đánh giá phù hợp'))
+        else
+          ...filtered.map(ratingCard),
+      ],
     );
   }
 

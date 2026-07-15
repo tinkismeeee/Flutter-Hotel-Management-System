@@ -4,6 +4,8 @@ import '../../models/daily_revenue_report.dart';
 import '../../models/invoice.dart';
 import '../../services/revenue_report_service.dart';
 import '../../utils/app_colors.dart';
+import '../revenue/invoice_detail_screen.dart';
+import '../widgets/list_query_bar.dart';
 
 class DailyRevenueScreen extends StatefulWidget {
   const DailyRevenueScreen({super.key});
@@ -16,6 +18,9 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
   late Future<DailyRevenueReport> reportFuture;
   DateTime selectedStartDate = DateTime.now();
   DateTime selectedEndDate = DateTime.now();
+  String searchQuery = '';
+  String sortBy = 'date_desc';
+  String paymentFilter = 'all';
 
   @override
   void initState() {
@@ -173,6 +178,41 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
           invoiceDate.month == date.month &&
           invoiceDate.day == date.day;
     }).toList();
+  }
+
+  List<Invoice> applyInvoiceQuery(List<Invoice> invoices) {
+    final query = searchQuery.trim().toLowerCase();
+    final result = invoices.where((invoice) {
+      final matchesSearch =
+          query.isEmpty ||
+          invoice.invoiceId.toString().contains(query) ||
+          invoice.bookingId.toString().contains(query) ||
+          invoice.staffId.toString().contains(query) ||
+          invoice.paymentMethod.toLowerCase().contains(query);
+      final matchesPayment =
+          paymentFilter == 'all' ||
+          invoice.paymentStatus.toLowerCase() == paymentFilter;
+      return matchesSearch && matchesPayment;
+    }).toList();
+
+    result.sort((a, b) {
+      if (sortBy == 'date_asc') return a.date.compareTo(b.date);
+      if (sortBy == 'amount_high') {
+        return b.finalAmount.compareTo(a.finalAmount);
+      }
+      if (sortBy == 'amount_low') {
+        return a.finalAmount.compareTo(b.finalAmount);
+      }
+      return b.date.compareTo(a.date);
+    });
+    return result;
+  }
+
+  void openInvoice(Invoice invoice) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => InvoiceDetailScreen(invoice: invoice)),
+    );
   }
 
   String money(double value) {
@@ -610,6 +650,8 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
       );
     }
 
+    final filtered = applyInvoiceQuery(invoices);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -622,70 +664,108 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        ...invoices.map(invoiceCard),
+        ListQueryBar(
+          searchHint: 'Tìm hóa đơn, booking, nhân viên...',
+          onSearchChanged: (value) => setState(() => searchQuery = value),
+          sortValue: sortBy,
+          sortOptions: const {
+            'date_desc': 'Ngày mới nhất',
+            'date_asc': 'Ngày cũ nhất',
+            'amount_high': 'Giá trị cao nhất',
+            'amount_low': 'Giá trị thấp nhất',
+          },
+          onSortChanged: (value) =>
+              setState(() => sortBy = value ?? 'date_desc'),
+          filterValue: paymentFilter,
+          filterOptions: const {
+            'all': 'Tất cả thanh toán',
+            'paid': 'Đã thanh toán',
+            'pending': 'Chờ thanh toán',
+            'failed': 'Thanh toán lỗi',
+            'refunded': 'Đã hoàn tiền',
+          },
+          onFilterChanged: (value) =>
+              setState(() => paymentFilter = value ?? 'all'),
+          resultCount: filtered.length,
+        ),
+        const SizedBox(height: 14),
+        if (filtered.isEmpty)
+          const Text(
+            'Không có hóa đơn phù hợp',
+            style: TextStyle(color: AppColors.textGray),
+          )
+        else
+          ...filtered.map(invoiceCard),
       ],
     );
   }
 
   Widget invoiceCard(Invoice invoice) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: AppColors.gold.withValues(alpha: 0.18),
-            child: const Icon(Icons.receipt_rounded, color: AppColors.gold),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Hóa đơn #${invoice.invoiceId}',
-                  style: const TextStyle(
-                    color: AppColors.textDark,
-                    fontWeight: FontWeight.bold,
+    return InkWell(
+      key: ValueKey('daily-invoice-${invoice.invoiceId}'),
+      onTap: () => openInvoice(invoice),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: AppColors.gold.withValues(alpha: 0.18),
+              child: const Icon(Icons.receipt_rounded, color: AppColors.gold),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hóa đơn #${invoice.invoiceId}',
+                    style: const TextStyle(
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Ngày: ${shortDate(invoice.date)}',
-                  style: const TextStyle(color: AppColors.textGray),
-                ),
-                Text(
-                  'Booking: ${invoice.bookingId} • Staff: ${invoice.staffId}',
-                  style: const TextStyle(color: AppColors.textGray),
-                ),
-                Text(
-                  invoice.paymentStatus.isEmpty
-                      ? invoice.paymentMethod
-                      : '${invoice.paymentStatus} • ${invoice.paymentMethod}',
-                  style: const TextStyle(color: AppColors.textGray),
-                ),
-              ],
+                  const SizedBox(height: 3),
+                  Text(
+                    'Ngày: ${shortDate(invoice.date)}',
+                    style: const TextStyle(color: AppColors.textGray),
+                  ),
+                  Text(
+                    'Booking: ${invoice.bookingId} • Staff: ${invoice.staffId}',
+                    style: const TextStyle(color: AppColors.textGray),
+                  ),
+                  Text(
+                    invoice.paymentStatus.isEmpty
+                        ? invoice.paymentMethod
+                        : '${invoice.paymentStatus} • ${invoice.paymentMethod}',
+                    style: const TextStyle(color: AppColors.textGray),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Text(
-            compactMoney(invoice.finalAmount),
-            style: const TextStyle(
-              color: AppColors.gold,
-              fontWeight: FontWeight.bold,
+            Text(
+              compactMoney(invoice.finalAmount),
+              style: const TextStyle(
+                color: AppColors.gold,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.gold),
+          ],
+        ),
       ),
     );
   }

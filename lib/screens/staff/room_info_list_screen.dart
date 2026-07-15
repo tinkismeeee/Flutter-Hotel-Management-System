@@ -5,6 +5,7 @@ import '../../models/room.dart';
 import '../../services/booking_service.dart';
 import '../../services/room_service.dart';
 import '../../utils/app_colors.dart';
+import '../widgets/list_query_bar.dart';
 import 'room_detail_screen.dart';
 
 class RoomInfoData {
@@ -30,6 +31,8 @@ class _RoomInfoListScreenState extends State<RoomInfoListScreen> {
   double? selectedMaxPrice;
   DateTimeRange? selectedDateRange;
   final Set<String> selectedStatuses = {};
+  String searchQuery = '';
+  String sortBy = 'number';
 
   @override
   void initState() {
@@ -135,7 +138,15 @@ class _RoomInfoListScreenState extends State<RoomInfoListScreen> {
   }
 
   List<Room> applyFilters(List<Room> rooms, List<Booking> bookings) {
-    return rooms.where((room) {
+    final query = searchQuery.trim().toLowerCase();
+    final result = rooms.where((room) {
+      if (query.isNotEmpty &&
+          !room.roomNumber.toLowerCase().contains(query) &&
+          !room.roomTypeName.toLowerCase().contains(query) &&
+          !room.floor.toString().contains(query)) {
+        return false;
+      }
+
       if (selectedRoomTypeId != null && room.roomTypeId != selectedRoomTypeId) {
         return false;
       }
@@ -168,6 +179,18 @@ class _RoomInfoListScreenState extends State<RoomInfoListScreen> {
 
       return true;
     }).toList();
+
+    result.sort((a, b) {
+      if (sortBy == 'price_low') {
+        return a.pricePerNight.compareTo(b.pricePerNight);
+      }
+      if (sortBy == 'price_high') {
+        return b.pricePerNight.compareTo(a.pricePerNight);
+      }
+      if (sortBy == 'floor') return a.floor.compareTo(b.floor);
+      return a.roomNumber.compareTo(b.roomNumber);
+    });
+    return result;
   }
 
   bool hasBookingInRange(
@@ -834,10 +857,37 @@ class _RoomInfoListScreenState extends State<RoomInfoListScreen> {
     );
   }
 
+  Widget queryBar(int resultCount) {
+    return ListQueryBar(
+      searchHint: 'Tìm số phòng, loại phòng, tầng...',
+      onSearchChanged: (value) => setState(() => searchQuery = value),
+      sortValue: sortBy,
+      sortOptions: const {
+        'number': 'Số phòng',
+        'floor': 'Tầng thấp nhất',
+        'price_low': 'Giá thấp nhất',
+        'price_high': 'Giá cao nhất',
+      },
+      onSortChanged: (value) => setState(() => sortBy = value ?? 'number'),
+      filterValue: hasActiveFilters ? 'advanced' : 'all',
+      filterOptions: const {'all': 'Không lọc', 'advanced': 'Bộ lọc nâng cao'},
+      onFilterChanged: (value) {
+        if (value == 'advanced') {
+          openFilterSheet();
+        } else {
+          clearFilters();
+        }
+      },
+      resultCount: resultCount,
+    );
+  }
+
   Widget emptyFilterResult(int totalCount) {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        queryBar(0),
+        const SizedBox(height: 14),
         if (hasActiveFilters) filterSummary(0, totalCount),
         Container(
           width: double.infinity,
@@ -869,6 +919,8 @@ class _RoomInfoListScreenState extends State<RoomInfoListScreen> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        queryBar(rooms.length),
+        const SizedBox(height: 14),
         if (hasActiveFilters) filterSummary(rooms.length, totalCount),
         ...rooms.map(roomCard),
       ],
