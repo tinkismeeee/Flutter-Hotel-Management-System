@@ -94,6 +94,35 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> handleGoogleLogin() async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      isLoading = true;
+      loginError = null;
+    });
+
+    try {
+      final user = await loginController.loginWithGoogle();
+      if (user == null) return;
+
+      await UserModel.saveCurrentUser(user);
+
+      if (!mounted) return;
+      widget.onLoggedIn?.call(user);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        loginError = error.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
   void hideErrorsWhenUnfocus() {
     FocusScope.of(context).unfocus();
 
@@ -231,10 +260,8 @@ class _LoginPageState extends State<LoginPage> {
 
                 Row(
                   children: [
-                    Radio<bool>(
-                      value: true,
-                      groupValue: rememberPassword,
-                      toggleable: true,
+                    Checkbox(
+                      value: rememberPassword,
                       onChanged: (value) {
                         setState(() {
                           rememberPassword = value ?? false;
@@ -386,19 +413,30 @@ class _LoginPageState extends State<LoginPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        debugPrint('Google login');
-                      },
-                      child: Container(
-                        height: 72,
-                        width: 72,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF7F7F7),
-                          borderRadius: BorderRadius.circular(12),
+                    Semantics(
+                      button: true,
+                      label: 'Sign in with Google',
+                      child: InkWell(
+                        onTap: isLoading ? null : handleGoogleLogin,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          height: 72,
+                          width: 72,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7F7F7),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Image.asset('assets/imgs/google_img.png'),
                         ),
-                        alignment: Alignment.center,
-                        child: Image.asset('assets/imgs/google_img.png'),
                       ),
                     ),
                   ],
