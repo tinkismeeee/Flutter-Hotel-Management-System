@@ -12,6 +12,7 @@ class Booking {
   final double? totalPrice;
   final String username;
   final List<int> roomIds;
+  final List<String> roomNumbers;
 
   Booking({
     required this.bookingId,
@@ -27,6 +28,7 @@ class Booking {
     required this.totalPrice,
     required this.username,
     required this.roomIds,
+    this.roomNumbers = const [],
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,7 @@ class Booking {
           : double.tryParse(json['total_price'].toString()),
       username: json['username'] ?? '',
       roomIds: _readRoomIds(json),
+      roomNumbers: _readRoomNumbers(json),
     );
   }
 
@@ -70,6 +73,46 @@ class Booking {
           })
           .whereType<int>()
           .toList();
+    }
+
+    return const [];
+  }
+
+  static List<String> _readRoomNumbers(Map<String, dynamic> json) {
+    final direct = json['room_number'] ?? json['roomNumber'];
+    if (direct != null && direct.toString().isNotEmpty) {
+      return [direct.toString()];
+    }
+
+    final roomNumbers = json['room_numbers'] ?? json['roomNumbers'];
+    if (roomNumbers is List) {
+      return roomNumbers
+          .map((value) => value?.toString() ?? '')
+          .where((value) => value.isNotEmpty)
+          .toList();
+    }
+
+    final rooms = json['rooms'];
+    if (rooms is List) {
+      return rooms
+          .map((room) {
+            if (room is Map) {
+              return room['room_number'] ?? room['roomNumber'];
+            }
+            return null;
+          })
+          .whereType<Object>()
+          .map((value) => value.toString())
+          .where((value) => value.isNotEmpty)
+          .toList();
+    }
+
+    final room = json['room'];
+    if (room is Map) {
+      final value = room['room_number'] ?? room['roomNumber'];
+      if (value != null && value.toString().isNotEmpty) {
+        return [value.toString()];
+      }
     }
 
     return const [];

@@ -5,6 +5,7 @@ import '../../utils/app_colors.dart';
 import '../widgets/list_query_bar.dart';
 import 'add_room_screen.dart';
 import 'edit_room_screen.dart';
+import 'room_booking_schedule_screen.dart';
 
 class RoomListScreen extends StatefulWidget {
   const RoomListScreen({super.key});
@@ -70,6 +71,13 @@ class _RoomListScreenState extends State<RoomListScreen> {
       MaterialPageRoute(builder: (_) => EditRoomScreen(room: room)),
     );
     refreshData();
+  }
+
+  void openBookingSchedule(Room room) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => RoomBookingScheduleScreen(room: room)),
+    );
   }
 
   Future<void> confirmDelete(Room room) async {
@@ -175,6 +183,14 @@ class _RoomListScreenState extends State<RoomListScreen> {
 
           Column(
             children: [
+              IconButton(
+                tooltip: 'Xem lịch đặt',
+                onPressed: () => openBookingSchedule(room),
+                icon: const Icon(
+                  Icons.event_note_rounded,
+                  color: Colors.blueAccent,
+                ),
+              ),
               IconButton(
                 onPressed: () => goToEdit(room),
                 icon: const Icon(Icons.edit_rounded, color: AppColors.gold),

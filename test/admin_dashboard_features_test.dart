@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hotel_system_management/models/booking.dart';
 import 'package:hotel_system_management/models/invoice.dart';
+import 'package:hotel_system_management/models/room.dart';
 import 'package:hotel_system_management/screens/booking/booking_list_screen.dart';
 import 'package:hotel_system_management/screens/revenue/invoice_detail_screen.dart';
+import 'package:hotel_system_management/screens/room/room_booking_schedule_screen.dart';
 import 'package:hotel_system_management/screens/widgets/list_query_bar.dart';
 
 void main() {
@@ -98,12 +100,70 @@ void main() {
     expect(find.text('PayOS'), findsOneWidget);
     expect(find.text('#34'), findsOneWidget);
   });
+
+  test('room schedule filters cancelled and unrelated bookings', () {
+    final matching = booking(
+      checkIn: '2026-08-10',
+      checkOut: '2026-08-12',
+      status: 'confirmed',
+    );
+    final cancelled = booking(
+      checkIn: '2026-08-01',
+      checkOut: '2026-08-03',
+      status: 'cancelled',
+    );
+    final unrelated = booking(
+      checkIn: '2026-08-05',
+      checkOut: '2026-08-06',
+      status: 'confirmed',
+      roomIds: const [202],
+    );
+
+    expect(bookingsForRoom([unrelated, cancelled, matching], 101), [matching]);
+  });
+
+  test('booking model reads room numbers separately from room ids', () {
+    final value = Booking.fromJson({
+      'booking_id': 1,
+      'room_ids': [7, 8],
+      'room_numbers': ['101', '202'],
+    });
+
+    expect(value.roomIds, [7, 8]);
+    expect(value.roomNumbers, ['101', '202']);
+  });
+
+  testWidgets('room schedule shows check-in and check-out dates', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RoomBookingScheduleScreen(
+          room: room(),
+          loadBookings: () async => [
+            booking(
+              checkIn: '2026-08-10',
+              checkOut: '2026-08-12',
+              status: 'confirmed',
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Check-in: 10/08/2026'), findsOneWidget);
+    expect(find.text('Check-out: 12/08/2026'), findsOneWidget);
+    expect(find.text('Booking #1'), findsOneWidget);
+  });
 }
 
 Booking booking({
   required String checkIn,
   required String checkOut,
   required String status,
+  List<int> roomIds = const [101],
+  List<String> roomNumbers = const ['101'],
 }) {
   return Booking(
     bookingId: 1,
@@ -118,6 +178,23 @@ Booking booking({
     numberOfNights: 3,
     totalPrice: 1000000,
     username: 'guest',
-    roomIds: const [101],
+    roomIds: roomIds,
+    roomNumbers: roomNumbers,
+  );
+}
+
+Room room() {
+  return Room(
+    roomId: 101,
+    roomNumber: '101',
+    roomTypeId: 1,
+    floor: 1,
+    pricePerNight: 500000,
+    maxGuests: 2,
+    bedCount: 1,
+    description: '',
+    status: 'available',
+    isActive: true,
+    roomTypeName: 'Deluxe',
   );
 }

@@ -4,6 +4,7 @@ import '../../services/booking_service.dart';
 import '../../utils/app_colors.dart';
 import '../widgets/list_query_bar.dart';
 import 'add_booking_screen.dart';
+import 'booking_detail_screen.dart';
 import 'edit_booking_screen.dart';
 
 bool isCurrentHotelBooking(Booking booking, DateTime now) {
@@ -57,6 +58,9 @@ class _BookingListScreenState extends State<BookingListScreen> {
           booking.bookingId.toString().contains(query) ||
           booking.username.toLowerCase().contains(query) ||
           booking.userId.toString().contains(query) ||
+          booking.roomNumbers.any(
+            (number) => number.toLowerCase().contains(query),
+          ) ||
           booking.roomIds.any((id) => id.toString().contains(query));
       final matchesStatus =
           filterBy == 'all' || booking.status.toLowerCase() == filterBy;
@@ -96,6 +100,13 @@ class _BookingListScreenState extends State<BookingListScreen> {
       MaterialPageRoute(builder: (_) => EditBookingScreen(booking: booking)),
     );
     refreshData();
+  }
+
+  void openDetails(Booking booking) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => BookingDetailScreen(booking: booking)),
+    );
   }
 
   Future<void> confirmDelete(Booking booking) async {
@@ -152,7 +163,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
       (total, booking) => total + booking.totalGuests,
     );
     final roomCount = current
-        .expand((booking) => booking.roomIds)
+        .expand((booking) => booking.roomNumbers)
         .toSet()
         .length;
 
@@ -265,93 +276,120 @@ class _BookingListScreenState extends State<BookingListScreen> {
   Widget bookingCard(Booking booking) {
     final current = isCurrentHotelBooking(booking, DateTime.now());
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(22),
-        border: current ? Border.all(color: AppColors.gold, width: 1.5) : null,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: (current ? Colors.green : AppColors.gold)
-                .withValues(alpha: 0.18),
-            child: Icon(
-              current ? Icons.hotel_rounded : Icons.calendar_month_rounded,
-              color: current ? Colors.green : AppColors.gold,
+    return InkWell(
+      key: ValueKey('booking-${booking.bookingId}'),
+      onTap: () => openDetails(booking),
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(22),
+          border: current
+              ? Border.all(color: AppColors.gold, width: 1.5)
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.07),
+              blurRadius: 14,
+              offset: const Offset(0, 7),
             ),
-          ),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: (current ? Colors.green : AppColors.gold)
+                  .withValues(alpha: 0.18),
+              child: Icon(
+                current ? Icons.hotel_rounded : Icons.calendar_month_rounded,
+                color: current ? Colors.green : AppColors.gold,
+              ),
+            ),
 
-          const SizedBox(width: 14),
+            const SizedBox(width: 14),
 
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Booking #${booking.bookingId}',
+                    style: const TextStyle(
+                      color: AppColors.textDark,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    booking.username.isEmpty
+                        ? 'User ID: ${booking.userId}'
+                        : booking.username,
+                    style: const TextStyle(
+                      color: AppColors.gold,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Check-in: ${shortDate(booking.checkIn)}',
+                    style: const TextStyle(color: AppColors.textGray),
+                  ),
+                  Text(
+                    'Check-out: ${shortDate(booking.checkOut)}',
+                    style: const TextStyle(color: AppColors.textGray),
+                  ),
+                  Text(
+                    'Khách: ${booking.totalGuests}',
+                    style: const TextStyle(color: AppColors.textGray),
+                  ),
+                  if (booking.roomNumbers.isNotEmpty)
+                    Text(
+                      'Phòng: ${booking.roomNumbers.join(', ')}',
+                      style: const TextStyle(color: AppColors.textGray),
+                    ),
+                  if (booking.totalPrice != null)
+                    Text(
+                      '${booking.totalPrice!.toStringAsFixed(0)} VNĐ',
+                      style: const TextStyle(
+                        color: AppColors.gold,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  Text(
+                    'Trạng thái: ${booking.status}',
+                    style: TextStyle(
+                      color: statusColor(booking.status),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Column(
               children: [
-                Text(
-                  'Booking #${booking.bookingId}',
-                  style: const TextStyle(
-                    color: AppColors.textDark,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textGray,
                 ),
-                Text(
-                  booking.username.isEmpty
-                      ? 'User ID: ${booking.userId}'
-                      : booking.username,
-                  style: const TextStyle(
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.w600,
-                  ),
+                IconButton(
+                  onPressed: () => goToEdit(booking),
+                  icon: const Icon(Icons.edit_rounded, color: AppColors.gold),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Check-in: ${shortDate(booking.checkIn)}',
-                  style: const TextStyle(color: AppColors.textGray),
-                ),
-                Text(
-                  'Check-out: ${shortDate(booking.checkOut)}',
-                  style: const TextStyle(color: AppColors.textGray),
-                ),
-                Text(
-                  'Khách: ${booking.totalGuests}',
-                  style: const TextStyle(color: AppColors.textGray),
-                ),
-                Text(
-                  'Trạng thái: ${booking.status}',
-                  style: TextStyle(
-                    color: statusColor(booking.status),
-                    fontWeight: FontWeight.w600,
+                IconButton(
+                  onPressed: () => confirmDelete(booking),
+                  icon: const Icon(
+                    Icons.delete_rounded,
+                    color: Colors.redAccent,
                   ),
                 ),
               ],
             ),
-          ),
-
-          Column(
-            children: [
-              IconButton(
-                onPressed: () => goToEdit(booking),
-                icon: const Icon(Icons.edit_rounded, color: AppColors.gold),
-              ),
-              IconButton(
-                onPressed: () => confirmDelete(booking),
-                icon: const Icon(Icons.delete_rounded, color: Colors.redAccent),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

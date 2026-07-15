@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/room.dart';
 import '../../utils/app_colors.dart';
+import '../room/room_booking_schedule_screen.dart';
 
 class RoomDetailScreen extends StatelessWidget {
   final Room room;
@@ -184,6 +185,13 @@ class RoomDetailScreen extends StatelessWidget {
     );
   }
 
+  void openBookingSchedule(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => RoomBookingScheduleScreen(room: room)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -197,6 +205,21 @@ class RoomDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 children: [
                   summaryCard(),
+                  const SizedBox(height: 18),
+                  ElevatedButton.icon(
+                    key: const Key('roomBookingScheduleButton'),
+                    onPressed: () => openBookingSchedule(context),
+                    icon: const Icon(Icons.event_note_rounded),
+                    label: const Text('Xem lịch đặt phòng'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.gold,
+                      foregroundColor: AppColors.navy,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 18),
                   detailItem(
                     icon: Icons.stairs_rounded,
