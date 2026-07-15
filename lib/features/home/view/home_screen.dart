@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/models/user_model.dart';
 import '../controller/home_controller.dart';
@@ -208,8 +209,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
                     sliver: filteredRooms.isEmpty
-                        ? const SliverToBoxAdapter(
-                            child: Center(child: Text('No rooms found')),
+                        ? SliverToBoxAdapter(
+                            child: Center(
+                              child: Text(context.tr(AppText.noRoomsFound)),
+                            ),
                           )
                         : SliverList(
                             delegate: SliverChildBuilderDelegate((
@@ -288,7 +291,7 @@ class _Header extends StatelessWidget {
             children: [
               Semantics(
                 button: true,
-                label: 'Open profile',
+                label: context.tr(AppText.openProfile),
                 child: InkResponse(
                   key: const Key('homeProfileAvatar'),
                   onTap: onProfileTap,
@@ -311,9 +314,9 @@ class _Header extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Welcome back',
-                      style: TextStyle(
+                    Text(
+                      context.tr(AppText.welcomeBack),
+                      style: const TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -343,9 +346,9 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          const Text(
-            'Find your perfect room',
-            style: TextStyle(
+          Text(
+            context.tr(AppText.findPerfectRoom),
+            style: const TextStyle(
               color: AppColors.textPrimary,
               fontSize: 28,
               fontWeight: FontWeight.w800,
@@ -358,7 +361,7 @@ class _Header extends StatelessWidget {
             onChanged: onSearchChanged,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: 'Search room number, type, status',
+              hintText: context.tr(AppText.searchRooms),
               prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
               suffixIcon: searchController.text.isEmpty
                   ? null
@@ -413,7 +416,7 @@ class _HomeSummary extends StatelessWidget {
         children: [
           Expanded(
             child: _SummaryItem(
-              label: 'Showing',
+              label: context.tr(AppText.showing),
               value: visibleRooms.toString(),
               icon: Icons.hotel_outlined,
             ),
@@ -421,7 +424,7 @@ class _HomeSummary extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: _SummaryItem(
-              label: 'Available',
+              label: context.tr(AppText.available),
               value: availableRooms.toString(),
               icon: Icons.check_circle_outline,
             ),
@@ -429,7 +432,7 @@ class _HomeSummary extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: _SummaryItem(
-              label: 'Total',
+              label: context.tr(AppText.total),
               value: totalRooms.toString(),
               icon: Icons.meeting_room_outlined,
             ),
@@ -570,9 +573,9 @@ class _FilterSheetState extends State<_FilterSheet> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                const Text(
-                  'Filter By',
-                  style: TextStyle(
+                Text(
+                  context.tr(AppText.filterBy),
+                  style: const TextStyle(
                     color: Color(0xFF171725),
                     fontSize: 18,
                     fontFamily: 'Plus Jakarta Sans',
@@ -588,9 +591,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                       foregroundColor: const Color(0xFF2852AF),
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
-                    child: const Text(
-                      'Reset',
-                      style: TextStyle(
+                    child: Text(
+                      context.tr(AppText.reset),
+                      style: const TextStyle(
                         fontFamily: 'Plus Jakarta Sans',
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -609,9 +612,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _FilterSectionTitle(
-                    title: 'Room type',
+                    title: context.tr(AppText.roomType),
                     subtitle: selectedType == 'All'
-                        ? 'All room categories'
+                        ? context.tr(AppText.allRoomCategories)
                         : selectedType,
                   ),
                   const SizedBox(height: 16),
@@ -631,10 +634,10 @@ class _FilterSheetState extends State<_FilterSheet> {
                     child: Divider(height: 1, color: Color(0xFFE3E9ED)),
                   ),
                   _FilterSectionTitle(
-                    title: 'Price',
+                    title: context.tr(AppText.price),
                     subtitle: canSlide
                         ? '${_formatRoomPrice(selectedPriceRange.start.toString())} - ${_formatRoomPrice(selectedPriceRange.end.toString())} VND'
-                        : 'No price range',
+                        : context.tr(AppText.noPriceRange),
                   ),
                   const SizedBox(height: 12),
                   SliderTheme(
@@ -692,9 +695,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                     child: Divider(height: 1, color: Color(0xFFE3E9ED)),
                   ),
                   _FilterSectionTitle(
-                    title: 'Room status',
+                    title: context.tr(AppText.roomStatus),
                     subtitle: selectedStatus == 'All Status'
-                        ? 'Any availability'
+                        ? context.tr(AppText.anyAvailability)
                         : selectedStatus,
                   ),
                   const SizedBox(height: 16),
@@ -740,9 +743,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'Apply Filter',
-                  style: TextStyle(
+                child: Text(
+                  context.tr(AppText.applyFilter),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontFamily: 'Jost',
                     fontWeight: FontWeight.w600,
@@ -885,7 +888,9 @@ class _RoomCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Room ${room.roomNumber}',
+                            AppLocalizations.of(
+                              context,
+                            ).roomNumber(room.roomNumber),
                             style: const TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 19,
@@ -1039,13 +1044,24 @@ class _RoomFacts extends StatelessWidget {
       spacing: 12,
       runSpacing: 8,
       children: [
-        _Fact(icon: Icons.layers_outlined, text: 'Floor ${room.floor}'),
+        _Fact(
+          icon: Icons.layers_outlined,
+          text: AppLocalizations.of(context).floor(room.floor),
+        ),
         _Fact(icon: Icons.category_outlined, text: room.roomTypeName),
-        _Fact(icon: Icons.people_outline, text: '${room.maxGuests} guests'),
-        _Fact(icon: Icons.bed_outlined, text: '${room.bedCount} beds'),
+        _Fact(
+          icon: Icons.people_outline,
+          text: AppLocalizations.of(context).guests(room.maxGuests),
+        ),
+        _Fact(
+          icon: Icons.bed_outlined,
+          text: AppLocalizations.of(context).beds(room.bedCount),
+        ),
         _Fact(
           icon: Icons.payments_outlined,
-          text: '${_formatRoomPrice(room.pricePerNight)} VND/night',
+          text: AppLocalizations.of(
+            context,
+          ).pricePerNight(_formatRoomPrice(room.pricePerNight)),
         ),
       ],
     );
@@ -1139,7 +1155,10 @@ class _HomeError extends StatelessWidget {
               style: const TextStyle(color: Colors.red),
             ),
             const SizedBox(height: 12),
-            ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+            ElevatedButton(
+              onPressed: onRetry,
+              child: Text(context.tr(AppText.retry)),
+            ),
           ],
         ),
       ),

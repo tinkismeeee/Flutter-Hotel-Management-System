@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/theme/colors.dart';
 import '../../bookings/view/my_bookings_screen.dart';
@@ -10,12 +11,14 @@ class MainShell extends StatefulWidget {
   final UserModel user;
   final Future<void> Function() onLogout;
   final ValueChanged<UserModel> onUserUpdated;
+  final Future<void> Function(Locale) onLocaleChanged;
 
   const MainShell({
     super.key,
     required this.user,
     required this.onLogout,
     required this.onUserUpdated,
+    required this.onLocaleChanged,
   });
 
   @override
@@ -35,6 +38,7 @@ class _MainShellState extends State<MainShell> {
         user: widget.user,
         onLogout: widget.onLogout,
         onUserUpdated: widget.onUserUpdated,
+        onLocaleChanged: widget.onLocaleChanged,
       ),
     ];
 
@@ -96,21 +100,21 @@ class _MainNavigationBar extends StatelessWidget {
             _NavigationItem(
               icon: Icons.home_outlined,
               selectedIcon: Icons.home_rounded,
-              label: 'Home',
+              label: context.tr(AppText.home),
               selected: selectedIndex == 0,
               onTap: () => onSelected(0),
             ),
             _NavigationItem(
               icon: Icons.calendar_month_outlined,
               selectedIcon: Icons.calendar_month_rounded,
-              label: 'My Booking',
+              label: context.tr(AppText.myBooking),
               selected: selectedIndex == 1,
               onTap: () => onSelected(1),
             ),
             _NavigationItem(
               icon: Icons.person_outline_rounded,
               selectedIcon: Icons.person_rounded,
-              label: 'Profile',
+              label: context.tr(AppText.profile),
               selected: selectedIndex == 2,
               onTap: () => onSelected(2),
             ),

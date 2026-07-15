@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/theme/colors.dart';
 import '../controller/profile_controller.dart';
@@ -107,9 +108,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         centerTitle: true,
-        title: const Text(
-          'Edit Profile',
-          style: TextStyle(
+        title: Text(
+          context.tr(AppText.editProfile),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontFamily: 'Jost',
@@ -129,7 +130,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 children: [
                   Expanded(
                     child: _EditField(
-                      label: 'First name',
+                      label: context.tr(AppText.firstName),
                       controller: firstNameController,
                       textInputAction: TextInputAction.next,
                     ),
@@ -137,7 +138,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: _EditField(
-                      label: 'Last name',
+                      label: context.tr(AppText.lastName),
                       controller: lastNameController,
                       textInputAction: TextInputAction.next,
                     ),
@@ -146,7 +147,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
               _EditField(
-                label: 'Email',
+                label: context.tr(AppText.email),
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
@@ -154,21 +155,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
               _EditField(
-                label: 'Phone',
+                label: context.tr(AppText.phone),
                 controller: phoneController,
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 16),
               _EditField(
-                label: 'Address',
+                label: context.tr(AppText.address),
                 controller: addressController,
                 textInputAction: TextInputAction.next,
                 maxLines: 2,
               ),
               const SizedBox(height: 16),
               _EditField(
-                label: 'Date of birth',
+                label: context.tr(AppText.dateOfBirth),
                 controller: dateOfBirthController,
                 readOnly: true,
                 onTap: pickDate,
@@ -200,7 +201,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             color: AppColors.background,
                           ),
                         )
-                      : const Text('Save Changes'),
+                      : Text(context.tr(AppText.saveChanges)),
                 ),
               ),
             ],
@@ -212,9 +213,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   String? _validateEmail(String? value) {
     final email = (value ?? '').trim();
-    if (email.isEmpty) return 'Please enter your email.';
+    if (email.isEmpty) return context.tr(AppText.enterEmail);
     if (!RegExp(r'^[\w.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email)) {
-      return 'Please enter a valid email.';
+      return context.tr(AppText.invalidEmail);
     }
     return null;
   }
@@ -222,7 +223,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _validateDate(String? value) {
     final date = (value ?? '').trim();
     if (date.isEmpty) return null;
-    if (DateTime.tryParse(date) == null) return 'Invalid date.';
+    if (DateTime.tryParse(date) == null) {
+      return context.tr(AppText.invalidDate);
+    }
     return null;
   }
 }

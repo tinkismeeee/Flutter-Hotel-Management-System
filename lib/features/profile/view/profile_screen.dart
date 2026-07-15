@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/theme/colors.dart';
 import '../controller/profile_controller.dart';
@@ -9,6 +10,7 @@ class ProfileScreen extends StatefulWidget {
   final UserModel user;
   final Future<void> Function() onLogout;
   final ValueChanged<UserModel> onUserUpdated;
+  final Future<void> Function(Locale) onLocaleChanged;
   final ProfileController? controller;
 
   const ProfileScreen({
@@ -16,6 +18,7 @@ class ProfileScreen extends StatefulWidget {
     required this.user,
     required this.onLogout,
     required this.onUserUpdated,
+    required this.onLocaleChanged,
     this.controller,
   });
 
@@ -57,9 +60,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         toolbarHeight: 58,
         centerTitle: true,
-        title: const Text(
-          'Profile',
-          style: TextStyle(
+        title: Text(
+          context.tr(AppText.profile),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontFamily: 'Jost',
@@ -145,7 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         IconButton(
                           key: const Key('editProfileButton'),
                           onPressed: editProfile,
-                          tooltip: 'Edit profile',
+                          tooltip: context.tr(AppText.editProfile),
                           style: IconButton.styleFrom(
                             minimumSize: const Size(48, 48),
                             backgroundColor: AppColors.field,
@@ -156,9 +159,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                     const SizedBox(height: 28),
-                    const Text(
-                      'Setting',
-                      style: TextStyle(
+                    Text(
+                      context.tr(AppText.setting),
+                      style: const TextStyle(
                         color: AppColors.hint,
                         fontSize: 18,
                         fontFamily: 'Jost',
@@ -170,38 +173,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 14),
                     _SettingRow(
                       icon: Icons.email_outlined,
-                      label: 'Email',
-                      value: _profileValue(user.email),
+                      label: context.tr(AppText.email),
+                      value: _profileValue(context, user.email),
                       isMissing: user.email.trim().isEmpty,
                       onTap: editProfile,
                     ),
                     _SettingRow(
                       icon: Icons.phone_outlined,
-                      label: 'Phone',
-                      value: _profileValue(user.phone),
+                      label: context.tr(AppText.phone),
+                      value: _profileValue(context, user.phone),
                       isMissing: user.phone.trim().isEmpty,
                       onTap: editProfile,
                     ),
                     _SettingRow(
                       icon: Icons.location_on_outlined,
-                      label: 'Address',
-                      value: _profileValue(user.address),
+                      label: context.tr(AppText.address),
+                      value: _profileValue(context, user.address),
                       isMissing: user.address.trim().isEmpty,
                       onTap: editProfile,
                     ),
                     _SettingRow(
                       icon: Icons.cake_outlined,
-                      label: 'Date of birth',
-                      value: _profileValue(_dateOnly(user.dateOfBirth)),
+                      label: context.tr(AppText.dateOfBirth),
+                      value: _profileValue(
+                        context,
+                        _dateOnly(user.dateOfBirth),
+                      ),
                       isMissing: user.dateOfBirth.trim().isEmpty,
                       onTap: editProfile,
                     ),
                     if (user.userId.isNotEmpty)
                       _SettingRow(
                         icon: Icons.badge_outlined,
-                        label: 'Customer ID',
+                        label: context.tr(AppText.customerId),
                         value: user.userId,
                       ),
+                    _SettingRow(
+                      icon: Icons.language_rounded,
+                      label: context.tr(AppText.language),
+                      value:
+                          Localizations.localeOf(context).languageCode == 'vi'
+                          ? context.tr(AppText.vietnamese)
+                          : context.tr(AppText.english),
+                      onTap: selectLanguage,
+                    ),
                     const Spacer(),
                     _LogoutButton(isLoading: isLoggingOut, onPressed: logout),
                   ],
@@ -230,7 +245,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
     widget.onUserUpdated(updatedUser);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Profile updated.')));
+    ).showSnackBar(SnackBar(content: Text(context.tr(AppText.profileUpdated))));
+  }
+
+  Future<void> selectLanguage() async {
+    final currentLocale = Localizations.localeOf(context);
+    final selectedLocale = await showModalBottomSheet<Locale>(
+      context: context,
+      backgroundColor: AppColors.background,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                context.tr(AppText.selectLanguage),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _LanguageOption(
+                title: context.tr(AppText.english),
+                locale: const Locale('en'),
+                selected: currentLocale.languageCode == 'en',
+              ),
+              _LanguageOption(
+                title: context.tr(AppText.vietnamese),
+                locale: const Locale('vi'),
+                selected: currentLocale.languageCode == 'vi',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selectedLocale == null) return;
+    await widget.onLocaleChanged(selectedLocale);
   }
 
   Future<void> logout() async {
@@ -351,11 +407,11 @@ class _LogoutButton extends StatelessWidget {
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 180),
           child: isLoading
-              ? const Row(
-                  key: ValueKey('logoutLoading'),
+              ? Row(
+                  key: const ValueKey('logoutLoading'),
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(
+                    const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
@@ -363,14 +419,16 @@ class _LogoutButton extends StatelessWidget {
                         color: AppColors.danger,
                       ),
                     ),
-                    SizedBox(width: 10),
-                    Text(
-                      'Signing out...',
-                      style: TextStyle(
-                        color: AppColors.danger,
-                        fontSize: 15,
-                        fontFamily: 'Jost',
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(width: 10),
+                    Builder(
+                      builder: (context) => Text(
+                        context.tr(AppText.signingOut),
+                        style: const TextStyle(
+                          color: AppColors.danger,
+                          fontSize: 15,
+                          fontFamily: 'Jost',
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -388,14 +446,14 @@ class _LogoutButton extends StatelessWidget {
                       child: const Icon(Icons.logout_rounded, size: 20),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Logout',
-                            style: TextStyle(
+                            context.tr(AppText.logout),
+                            style: const TextStyle(
                               color: AppColors.danger,
                               fontSize: 16,
                               fontFamily: 'Jost',
@@ -405,8 +463,8 @@ class _LogoutButton extends StatelessWidget {
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Sign out of your account',
-                            style: TextStyle(
+                            context.tr(AppText.signOutDescription),
+                            style: const TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 12,
                               fontFamily: 'Jost',
@@ -439,13 +497,47 @@ String _initials(UserModel user) {
   return user.email.isEmpty ? '?' : user.email[0].toUpperCase();
 }
 
-String _profileValue(String value) {
+String _profileValue(BuildContext context, String value) {
   final normalized = value.trim();
-  return normalized.isEmpty ? 'Not provided' : normalized;
+  return normalized.isEmpty ? context.tr(AppText.notProvided) : normalized;
 }
 
 String _dateOnly(String value) {
   final normalized = value.trim();
   if (normalized.length < 10) return normalized;
   return normalized.substring(0, 10);
+}
+
+class _LanguageOption extends StatelessWidget {
+  final String title;
+  final Locale locale;
+  final bool selected;
+
+  const _LanguageOption({
+    required this.title,
+    required this.locale,
+    required this.selected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: () => Navigator.of(context).pop(locale),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      leading: Icon(
+        Icons.translate_rounded,
+        color: selected ? AppColors.primary : AppColors.textMuted,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        ),
+      ),
+      trailing: selected
+          ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
+          : null,
+    );
+  }
 }

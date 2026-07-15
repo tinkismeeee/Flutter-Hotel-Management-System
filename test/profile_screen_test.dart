@@ -30,6 +30,7 @@ void main() {
         home: ProfileScreen(
           user: user,
           onUserUpdated: (_) {},
+          onLocaleChanged: (_) async {},
           onLogout: () async {
             loggedOut = true;
           },

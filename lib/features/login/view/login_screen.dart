@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/models/user_model.dart';
 import '../../forgot_password/view/forgot_password_screen.dart';
@@ -141,13 +142,13 @@ class _LoginPageState extends State<LoginPage> {
     final email = value?.trim() ?? '';
 
     if (email.isEmpty) {
-      return 'Please enter your email address';
+      return context.tr(AppText.enterEmailAddress);
     }
 
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,}$');
 
     if (!emailRegex.hasMatch(email)) {
-      return 'Please enter a valid email address';
+      return context.tr(AppText.invalidEmail);
     }
 
     return null;
@@ -161,7 +162,7 @@ class _LoginPageState extends State<LoginPage> {
     final password = value?.trim() ?? '';
 
     if (password.isEmpty) {
-      return 'Please enter your password';
+      return context.tr(AppText.enterPassword);
     }
 
     return null;
@@ -181,10 +182,10 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 const SizedBox(height: 80),
 
-                const Center(
+                Center(
                   child: Text(
-                    "Let's sign you in",
-                    style: TextStyle(
+                    context.tr(AppText.loginTitle),
+                    style: const TextStyle(
                       color: Color(0xFF171725),
                       fontSize: 32,
                       fontWeight: FontWeight.w700,
@@ -195,11 +196,11 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 8),
 
-                const Center(
+                Center(
                   child: Text(
-                    "Welcome back! Please login to continue.",
+                    context.tr(AppText.loginSubtitle),
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: CustomColors.loginSmallText,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -211,8 +212,8 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 40),
 
                 CustomInputField(
-                  label: 'Email address',
-                  hintText: 'Enter your email address',
+                  label: context.tr(AppText.emailAddress),
+                  hintText: context.tr(AppText.enterEmailAddress),
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
                   validator: validateEmail,
@@ -222,8 +223,8 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 16),
 
                 CustomInputField(
-                  label: 'Password',
-                  hintText: 'Enter your password',
+                  label: context.tr(AppText.password),
+                  hintText: context.tr(AppText.enterPassword),
                   controller: passwordController,
                   obscureText: isPasswordHidden,
                   validator: validatePassword,
@@ -274,9 +275,9 @@ class _LoginPageState extends State<LoginPage> {
                           rememberPassword = !rememberPassword;
                         });
                       },
-                      child: const Text(
-                        'Remember me',
-                        style: TextStyle(
+                      child: Text(
+                        context.tr(AppText.rememberMe),
+                        style: const TextStyle(
                           color: CustomColors.loginText,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -298,9 +299,9 @@ class _LoginPageState extends State<LoginPage> {
                           Colors.transparent,
                         ),
                       ),
-                      child: const Text(
-                        'Forgot Password?',
-                        style: TextStyle(
+                      child: Text(
+                        context.tr(AppText.forgotPassword),
+                        style: const TextStyle(
                           color: CustomColors.forgotPasswordText,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -332,9 +333,9 @@ class _LoginPageState extends State<LoginPage> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text(
-                            'Login',
-                            style: TextStyle(
+                        : Text(
+                            context.tr(AppText.login),
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               fontFamily: 'Jost',
@@ -348,9 +349,9 @@ class _LoginPageState extends State<LoginPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      "Don't have an account?",
-                      style: TextStyle(
+                    Text(
+                      context.tr(AppText.noAccount),
+                      style: const TextStyle(
                         color: CustomColors.signUpFieldText,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -370,9 +371,9 @@ class _LoginPageState extends State<LoginPage> {
                           Colors.transparent,
                         ),
                       ),
-                      child: const Text(
-                        'Sign Up',
-                        style: TextStyle(
+                      child: Text(
+                        context.tr(AppText.signUp),
+                        style: const TextStyle(
                           color: CustomColors.buttonBackground,
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -386,15 +387,15 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 5),
 
                 Row(
-                  children: const [
-                    Expanded(
+                  children: [
+                    const Expanded(
                       child: Divider(color: Color(0xFFE5E5E5), thickness: 1),
                     ),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        'Or Sign In with',
-                        style: TextStyle(
+                        context.tr(AppText.signInWith),
+                        style: const TextStyle(
                           color: CustomColors.loginHintText,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -402,7 +403,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-                    Expanded(
+                    const Expanded(
                       child: Divider(color: Color(0xFFE5E5E5), thickness: 1),
                     ),
                   ],
@@ -415,7 +416,7 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     Semantics(
                       button: true,
-                      label: 'Sign in with Google',
+                      label: context.tr(AppText.signInWithGoogle),
                       child: InkWell(
                         onTap: isLoading ? null : handleGoogleLogin,
                         borderRadius: BorderRadius.circular(12),
