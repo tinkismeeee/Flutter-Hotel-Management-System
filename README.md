@@ -31,7 +31,11 @@ http://54.91.41.3:5000/api
 ```powershell
 flutter pub get
 flutter run --dart-define-from-file=admin.demo.json
+flutter run -d chrome --web-port 8080
 ```
+
+For Google login on Flutter Web, add `http://localhost:8080` to the OAuth
+client's Authorized JavaScript origins in Google Cloud Console.
 
 ## Verify
 

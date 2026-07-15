@@ -4,6 +4,7 @@ import '../../../core/models/user_model.dart';
 import '../../forgot_password/view/forgot_password_screen.dart';
 import '../../signup/view/signup_screen.dart';
 import '../controller/login_controller.dart';
+import 'widgets/google_login_button.dart';
 
 class LoginPage extends StatefulWidget {
   final ValueChanged<UserModel>? onLoggedIn;
@@ -84,13 +85,25 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> handleGoogleLogin() async {
+    await _handleGoogleLogin(loginController.googleLogin);
+  }
+
+  Future<void> handleGoogleLoginWithIdToken(String idToken) async {
+    await _handleGoogleLogin(
+      () => loginController.googleLoginWithIdToken(idToken),
+    );
+  }
+
+  Future<void> _handleGoogleLogin(
+    Future<UserModel> Function() authenticate,
+  ) async {
     setState(() {
       isLoading = true;
       loginError = null;
     });
 
     try {
-      final user = await loginController.googleLogin();
+      final user = await authenticate();
       if (!mounted) return;
       widget.onLoggedIn?.call(user);
       debugPrint('Google login successful for user: ${user.username}');
@@ -108,6 +121,14 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
     }
+  }
+
+  void handleGoogleLoginError(Object error) {
+    if (!mounted) return;
+    setState(() {
+      isLoading = false;
+      loginError = error.toString().replaceFirst('Exception: ', '');
+    });
   }
 
   void hideErrorsWhenUnfocus() {
@@ -402,19 +423,11 @@ class _LoginPageState extends State<LoginPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    GestureDetector(
-                      key: const Key('googleLoginButton'),
-                      onTap: isLoading ? null : handleGoogleLogin,
-                      child: Container(
-                        height: 72,
-                        width: 72,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF7F7F7),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: Image.asset('assets/imgs/google_img.png'),
-                      ),
+                    GoogleLoginButton(
+                      enabled: !isLoading,
+                      onTap: handleGoogleLogin,
+                      onIdToken: handleGoogleLoginWithIdToken,
+                      onError: handleGoogleLoginError,
                     ),
                   ],
                 ),

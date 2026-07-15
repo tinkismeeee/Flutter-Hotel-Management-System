@@ -268,6 +268,61 @@ void main() {
     },
   );
 
+  test(
+    'googleLoginWithIdToken posts the supplied token without native provider',
+    () async {
+      late Uri postedUri;
+      late String postedBody;
+      var tokenCalls = 0;
+      final controller = LoginController(
+        googleTokenProvider: () async {
+          tokenCalls++;
+          throw StateError('Native provider must not run');
+        },
+        post: (uri, {headers, body, encoding}) async {
+          postedUri = uri;
+          postedBody = body! as String;
+          return http.Response(
+            jsonEncode(<String, Object>{
+              'message': 'Login successful',
+              'user': userJson,
+            }),
+            200,
+          );
+        },
+      );
+
+      final user = await controller.googleLoginWithIdToken('web-id-token');
+
+      expect(tokenCalls, 0);
+      expect(postedUri.toString(), ApiEndpoints.customerGoogleLogin);
+      expect(jsonDecode(postedBody), const {'idToken': 'web-id-token'});
+      expect(user.email, 'google@example.com');
+    },
+  );
+
+  test('googleLoginWithIdToken rejects an empty token before HTTP', () async {
+    var postCalls = 0;
+    final controller = LoginController(
+      post: (uri, {headers, body, encoding}) async {
+        postCalls++;
+        throw StateError('HTTP must not run');
+      },
+    );
+
+    await expectLater(
+      controller.googleLoginWithIdToken('   '),
+      throwsA(
+        isA<Exception>().having(
+          (error) => error.toString(),
+          'message',
+          contains('ID token'),
+        ),
+      ),
+    );
+    expect(postCalls, 0);
+  });
+
   test('googleLogin accepts a newly created user response', () async {
     final controller = LoginController(
       googleTokenProvider: () async => 'google-id-token',

@@ -124,6 +124,14 @@ class LoginController {
 
   Future<UserModel> googleLogin() async {
     final idToken = await _googleTokenProvider();
+    return googleLoginWithIdToken(idToken);
+  }
+
+  Future<UserModel> googleLoginWithIdToken(String idToken) async {
+    if (idToken.trim().isEmpty) {
+      throw Exception('Google sign-in did not return an ID token.');
+    }
+
     final response = await _post(
       Uri.parse(ApiEndpoints.customerGoogleLogin),
       headers: const {'Content-Type': 'application/json'},
