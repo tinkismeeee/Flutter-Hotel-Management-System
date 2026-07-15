@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/models/user_model.dart';
 import '../../../core/theme/colors.dart';
+import 'my_profile_screen.dart';
 
 class AccountScreen extends StatelessWidget {
   final UserModel user;
@@ -47,6 +48,22 @@ class AccountScreen extends StatelessWidget {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 32),
+          ListTile(
+            key: const Key('myProfileButton'),
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.manage_accounts_outlined),
+            title: const Text('My Profile'),
+            subtitle: const Text('View your personal information'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => MyProfileScreen(userId: user.userId),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
           OutlinedButton.icon(
             key: const Key('customerLogoutButton'),
             onPressed: onLogout,
