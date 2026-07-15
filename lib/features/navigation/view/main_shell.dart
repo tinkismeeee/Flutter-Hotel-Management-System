@@ -31,13 +31,18 @@ class _MainShellState extends State<MainShell> {
     return PopScope(
       canPop: selectedIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) setState(() => selectedIndex = 0);
+        if (!didPop) {
+          setState(() {
+            selectedIndex = 0;
+          });
+        }
       },
       child: Scaffold(
         body: IndexedStack(index: selectedIndex, children: pages),
         bottomNavigationBar: _MainNavigationBar(
           selectedIndex: selectedIndex,
           onSelected: (index) {
+            if (index == selectedIndex) return;
             setState(() {
               selectedIndex = index;
               if (index == 1) bookingRefreshToken++;
