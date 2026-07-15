@@ -61,7 +61,7 @@ void main() {
     expect(await UserModel.loadCurrentUser(), isNull);
   });
 
-  test('wrong local admin password continues to customer backend', () async {
+  test('wrong local admin password continues to backend login', () async {
     var postCalls = 0;
     final controller = LoginController(
       adminPassword: '12345678',
@@ -88,7 +88,7 @@ void main() {
         ),
       ),
     );
-    expect(postCalls, 1);
+    expect(postCalls, 2);
   });
 
   test('UserModel persistence preserves isAdmin', () async {
@@ -97,6 +97,129 @@ void main() {
     await UserModel.saveCurrentUser(user);
 
     expect((await UserModel.loadCurrentUser())?.isAdmin, isTrue);
+  });
+
+  test('customer 401 falls back to staff login', () async {
+    final postedUris = <String>[];
+    final controller = LoginController(
+      post: (uri, {headers, body, encoding}) async {
+        postedUris.add(uri.toString());
+        if (uri.toString() == ApiEndpoints.customerLogin) {
+          return http.Response(
+            jsonEncode({'message': 'Invalid email or password'}),
+            401,
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'message': 'Login successful',
+            'user': {...userJson, 'is_staff': true},
+          }),
+          200,
+        );
+      },
+    );
+
+    final user = await controller.login(
+      email: 'staff@example.com',
+      password: '12345678',
+      rememberPassword: true,
+    );
+
+    expect(postedUris, [
+      ApiEndpoints.customerLogin,
+      ApiEndpoints.staffLogin,
+    ]);
+    expect(user.isStaff, isTrue);
+    expect((await UserModel.loadCurrentUser())?.isStaff, isTrue);
+  });
+
+  test('customer success does not call staff login', () async {
+    final postedUris = <String>[];
+    final controller = LoginController(
+      post: (uri, {headers, body, encoding}) async {
+        postedUris.add(uri.toString());
+        return http.Response(
+          jsonEncode({
+            'message': 'Login successful',
+            'user': {...userJson, 'is_staff': true},
+          }),
+          200,
+        );
+      },
+    );
+
+    final user = await controller.login(
+      email: 'customer@example.com',
+      password: '12345678',
+      rememberPassword: false,
+    );
+
+    expect(postedUris, [ApiEndpoints.customerLogin]);
+    expect(user.isStaff, isFalse);
+  });
+
+  test('customer non-401 failure does not call staff login', () async {
+    final postedUris = <String>[];
+    final controller = LoginController(
+      post: (uri, {headers, body, encoding}) async {
+        postedUris.add(uri.toString());
+        return http.Response(jsonEncode({'message': 'Server unavailable'}), 503);
+      },
+    );
+
+    await expectLater(
+      controller.login(
+        email: 'staff@example.com',
+        password: '12345678',
+        rememberPassword: false,
+      ),
+      throwsA(
+        isA<Exception>().having(
+          (error) => error.toString(),
+          'message',
+          contains('Server unavailable'),
+        ),
+      ),
+    );
+
+    expect(postedUris, [ApiEndpoints.customerLogin]);
+  });
+
+  test('customer and staff 401 report the staff login error', () async {
+    final controller = LoginController(
+      post: (uri, {headers, body, encoding}) async => http.Response(
+        jsonEncode({
+          'message': uri.toString() == ApiEndpoints.customerLogin
+              ? 'Customer login failed'
+              : 'Invalid staff credentials',
+        }),
+        401,
+      ),
+    );
+
+    await expectLater(
+      controller.login(
+        email: 'unknown@example.com',
+        password: 'wrong',
+        rememberPassword: false,
+      ),
+      throwsA(
+        isA<Exception>().having(
+          (error) => error.toString(),
+          'message',
+          contains('Invalid staff credentials'),
+        ),
+      ),
+    );
+  });
+
+  test('UserModel persistence preserves isStaff', () async {
+    final user = UserModel.fromJson({...userJson, 'is_staff': true});
+
+    await UserModel.saveCurrentUser(user);
+
+    expect((await UserModel.loadCurrentUser())?.isStaff, isTrue);
   });
 
   test(
@@ -133,8 +256,10 @@ void main() {
       expect(jsonDecode(postedBody), const {'idToken': 'google-id-token'});
       expect(user.userId, '42');
       expect(user.isAdmin, isFalse);
+      expect(user.isStaff, isFalse);
       expect((await UserModel.loadCurrentUser())?.email, 'google@example.com');
       expect((await UserModel.loadCurrentUser())?.isAdmin, isFalse);
+      expect((await UserModel.loadCurrentUser())?.isStaff, isFalse);
       expect(
         (await SharedPreferences.getInstance()).getString('current_user'),
         isNot(contains('google-id-token')),
@@ -158,6 +283,7 @@ void main() {
 
     expect(user.email, 'google@example.com');
     expect(user.isAdmin, isFalse);
+    expect(user.isStaff, isFalse);
     expect((await UserModel.loadCurrentUser())?.email, 'google@example.com');
     expect((await UserModel.loadCurrentUser())?.isAdmin, isFalse);
   });

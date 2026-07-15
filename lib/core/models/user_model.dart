@@ -21,6 +21,7 @@ class UserModel {
   final String idCardBack;
   final bool isActive;
   final bool isAdmin;
+  final bool isStaff;
 
   // Constructor
   UserModel({
@@ -37,6 +38,7 @@ class UserModel {
     this.idCardBack = "",
     this.isActive = true,
     this.isAdmin = false,
+    this.isStaff = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -54,6 +56,7 @@ class UserModel {
       idCardBack: json['id_card_back_image_url']?.toString() ?? '',
       isActive: json['is_active'] == true,
       isAdmin: json['is_admin'] == true,
+      isStaff: json['is_staff'] == true,
     );
   }
 
@@ -70,6 +73,7 @@ class UserModel {
       'date_of_birth': dateOfBirth,
       'is_active': isActive,
       'is_admin': isAdmin,
+      'is_staff': isStaff,
     };
   }
 

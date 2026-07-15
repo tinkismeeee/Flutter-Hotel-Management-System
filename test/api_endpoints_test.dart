@@ -13,6 +13,7 @@ void main() {
     expect(ApiEndpoints.promotion, '${ApiEndpoints.baseUrl}/promotions');
     expect(ApiEndpoints.invoice, '${ApiEndpoints.baseUrl}/invoices');
     expect(ApiEndpoints.staff, '${ApiEndpoints.baseUrl}/staff');
+    expect(ApiEndpoints.staffLogin, '${ApiEndpoints.staff}/login');
     expect(ApiEndpoints.payment, '${ApiEndpoints.baseUrl}/payments');
   });
 }

@@ -73,21 +73,45 @@ class LoginController {
       headers: const {'Content-Type': 'application/json'},
       body: json.encode({'email': email, 'password': password}),
     );
-    final data = json.decode(response.body);
+    var isStaffLogin = false;
+    var data = json.decode(response.body);
     if (data is! Map<String, dynamic>) {
       throw Exception('Invalid server response');
     }
     if (response.statusCode != 200) {
-      throw Exception(
-        (data['message'] ?? data['error'])?.toString() ??
-            'Invalid email or password',
+      if (response.statusCode != 401) {
+        throw Exception(
+          (data['message'] ?? data['error'])?.toString() ??
+              'Invalid email or password',
+        );
+      }
+
+      final staffResponse = await _post(
+        Uri.parse(ApiEndpoints.staffLogin),
+        headers: const {'Content-Type': 'application/json'},
+        body: json.encode({'email': email, 'password': password}),
       );
+      data = json.decode(staffResponse.body);
+      if (data is! Map<String, dynamic>) {
+        throw Exception('Invalid server response');
+      }
+      if (staffResponse.statusCode != 200) {
+        throw Exception(
+          (data['message'] ?? data['error'])?.toString() ??
+              'Invalid email or password',
+        );
+      }
+      isStaffLogin = true;
     }
     final userJson = data['user'];
     if (userJson is! Map<String, dynamic>) {
       throw Exception('Invalid login response');
     }
-    final user = UserModel.fromJson(userJson);
+    final user = UserModel.fromJson({
+      ...userJson,
+      'is_admin': false,
+      'is_staff': isStaffLogin && userJson['is_staff'] == true,
+    });
 
     if (rememberPassword) {
       await UserModel.saveCurrentUser(user);
@@ -119,7 +143,11 @@ class LoginController {
       throw Exception('Invalid Google login response');
     }
 
-    final user = UserModel.fromJson({...userJson, 'is_admin': false});
+    final user = UserModel.fromJson({
+      ...userJson,
+      'is_admin': false,
+      'is_staff': false,
+    });
     await UserModel.saveCurrentUser(user);
     return user;
   }
