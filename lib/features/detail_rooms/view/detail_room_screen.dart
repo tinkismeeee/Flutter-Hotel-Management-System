@@ -18,11 +18,13 @@ class DetailRoomScreen extends StatefulWidget {
   final int roomId;
   final String? imageUrl;
   final UserModel user;
+  final ValueChanged<UserModel> onUserUpdated;
 
   const DetailRoomScreen({
     super.key,
     required this.roomId,
     required this.user,
+    required this.onUserUpdated,
     this.imageUrl,
   });
 
@@ -204,6 +206,7 @@ class _DetailRoomScreenState extends State<DetailRoomScreen> {
           eligibleBookingId: snapshot.data!.eligibleBookingId,
           imageUrl: widget.imageUrl,
           user: widget.user,
+          onUserUpdated: widget.onUserUpdated,
         );
       },
     );
@@ -234,6 +237,7 @@ class _DetailBody extends StatefulWidget {
   final int? eligibleBookingId;
   final String? imageUrl;
   final UserModel user;
+  final ValueChanged<UserModel> onUserUpdated;
 
   const _DetailBody({
     required this.room,
@@ -243,6 +247,7 @@ class _DetailBody extends StatefulWidget {
     required this.eligibleBookingId,
     required this.imageUrl,
     required this.user,
+    required this.onUserUpdated,
   });
 
   @override
@@ -477,6 +482,7 @@ class _DetailBodyState extends State<_DetailBody> {
           room: widget.room,
           roomTypeName: widget.roomTypeName,
           user: widget.user,
+          onUserUpdated: widget.onUserUpdated,
           services: chosenServices,
           stayRange: stayRange,
           nights: nights,

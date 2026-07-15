@@ -95,6 +95,8 @@ class UserModel {
       'phone_number': phone,
       'address': address,
       'date_of_birth': dateOfBirth,
+      'id_card_front_image_url': idCardFont,
+      'id_card_back_image_url': idCardBack,
       'is_active': isActive,
     };
   }

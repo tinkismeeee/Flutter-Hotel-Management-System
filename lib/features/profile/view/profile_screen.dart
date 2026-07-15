@@ -5,6 +5,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/theme/colors.dart';
 import '../controller/profile_controller.dart';
 import 'edit_profile_screen.dart';
+import 'id_card_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -217,6 +218,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           : context.tr(AppText.english),
                       onTap: selectLanguage,
                     ),
+                    _SettingRow(
+                      icon: Icons.credit_card_outlined,
+                      label: context.tr(AppText.identityCard),
+                      value: context.tr(
+                        user.idCardFont.isNotEmpty && user.idCardBack.isNotEmpty
+                            ? AppText.complete
+                            : AppText.missing,
+                      ),
+                      isMissing:
+                          user.idCardFont.isEmpty || user.idCardBack.isEmpty,
+                      onTap: manageIdCard,
+                    ),
                     const Spacer(),
                     _LogoutButton(isLoading: isLoggingOut, onPressed: logout),
                   ],
@@ -287,6 +300,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (selectedLocale == null) return;
     await widget.onLocaleChanged(selectedLocale);
+  }
+
+  Future<void> manageIdCard() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => IdCardScreen(
+          user: user,
+          controller: controller,
+          onUserUpdated: widget.onUserUpdated,
+        ),
+      ),
+    );
+    try {
+      final updated = await controller.fetchProfile(user);
+      await UserModel.updateSavedCurrentUserIfPresent(updated);
+      if (!mounted) return;
+      setState(() => user = updated);
+      widget.onUserUpdated(updated);
+    } catch (_) {
+      // Existing profile remains usable if refresh fails.
+    }
   }
 
   Future<void> logout() async {

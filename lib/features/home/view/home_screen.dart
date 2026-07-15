@@ -8,9 +8,15 @@ import '../../detail_rooms/view/detail_room_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserModel user;
+  final ValueChanged<UserModel> onUserUpdated;
   final VoidCallback onProfileTap;
 
-  const HomeScreen({super.key, required this.user, required this.onProfileTap});
+  const HomeScreen({
+    super.key,
+    required this.user,
+    required this.onUserUpdated,
+    required this.onProfileTap,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -241,6 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         roomId: room.roomId,
                                         imageUrl: imageUrl,
                                         user: widget.user,
+                                        onUserUpdated: widget.onUserUpdated,
                                       ),
                                     ),
                                   );

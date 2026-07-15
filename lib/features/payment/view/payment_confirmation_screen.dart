@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/booking_service_model.dart';
 import '../../../core/models/payos_payment_model.dart';
 import '../../../core/models/room_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/theme/colors.dart';
+import '../../profile/controller/profile_controller.dart';
+import '../../profile/view/id_card_screen.dart';
 import '../controller/payment_controller.dart';
 import 'payment_qr_screen.dart';
 
@@ -12,6 +15,7 @@ class PaymentConfirmationScreen extends StatefulWidget {
   final RoomModel room;
   final String roomTypeName;
   final UserModel user;
+  final ValueChanged<UserModel> onUserUpdated;
   final List<BookingServiceModel> services;
   final DateTimeRange? stayRange;
   final int nights;
@@ -23,6 +27,7 @@ class PaymentConfirmationScreen extends StatefulWidget {
     required this.room,
     required this.roomTypeName,
     required this.user,
+    required this.onUserUpdated,
     required this.services,
     required this.stayRange,
     required this.nights,
@@ -38,11 +43,16 @@ class PaymentConfirmationScreen extends StatefulWidget {
 class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
   final promoController = TextEditingController();
   final paymentController = PaymentController();
+  final profileController = ProfileController();
+  late UserModel user;
   String? promoError;
   String? paymentError;
   PromotionModel? appliedPromotion;
   bool isApplyingPromo = false;
   bool isCreatingPayment = false;
+
+  bool get hasCompleteIdCard =>
+      user.idCardFont.isNotEmpty && user.idCardBack.isNotEmpty;
 
   double get roomTotal =>
       _parsePrice(widget.room.pricePerNight) * widget.nights;
@@ -67,6 +77,13 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
   double get finalTotal =>
       (subtotal - discountAmount).clamp(0, double.infinity).toDouble();
+
+  @override
+  void initState() {
+    super.initState();
+    user = widget.user;
+    refreshUser();
+  }
 
   @override
   void dispose() {
@@ -117,7 +134,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
             _CheckoutPanel(
               room: widget.room,
               roomTypeName: widget.roomTypeName,
-              phone: widget.user.phone.trim(),
+              phone: user.phone.trim(),
               stayRange: widget.stayRange,
               nights: widget.nights,
               guests: widget.guests,
@@ -127,6 +144,10 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
               finalTotal: finalTotal,
             ),
             const SizedBox(height: 24),
+            if (!hasCompleteIdCard) ...[
+              _IdCardRequirement(onPressed: openIdCard),
+              const SizedBox(height: 24),
+            ],
             _PromoBox(
               controller: promoController,
               errorText: promoError,
@@ -203,8 +224,17 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
       paymentError = null;
     });
     try {
+      final latestUser = await profileController.fetchProfile(user);
+      if (!mounted) return;
+      setState(() => user = latestUser);
+      if (!hasCompleteIdCard) {
+        setState(() {
+          paymentError = 'Both ID card images are required before booking';
+        });
+        return;
+      }
       final payment = await paymentController.createPayment(
-        user: widget.user,
+        user: user,
         room: widget.room,
         checkIn: widget.stayRange!.start,
         checkOut: widget.stayRange!.end,
@@ -217,7 +247,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
         MaterialPageRoute(
           builder: (context) => PaymentQrScreen(
             room: widget.room,
-            user: widget.user,
+            user: user,
             roomTypeName: widget.roomTypeName,
             services: widget.services,
             stayRange: widget.stayRange,
@@ -235,6 +265,92 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     } finally {
       if (mounted) setState(() => isCreatingPayment = false);
     }
+  }
+
+  Future<void> refreshUser() async {
+    try {
+      final updated = await profileController.fetchProfile(user);
+      await persistUser(updated);
+    } catch (_) {
+      // Backend still validates the ID-card requirement on payment creation.
+    }
+  }
+
+  Future<void> openIdCard() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => IdCardScreen(
+          user: user,
+          controller: profileController,
+          onUserUpdated: widget.onUserUpdated,
+        ),
+      ),
+    );
+    await refreshUser();
+  }
+
+  Future<void> persistUser(UserModel updated) async {
+    await UserModel.updateSavedCurrentUserIfPresent(updated);
+    if (!mounted) return;
+    setState(() => user = updated);
+    widget.onUserUpdated(updated);
+  }
+}
+
+class _IdCardRequirement extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _IdCardRequirement({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.badge_outlined, color: AppColors.warning),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  context.tr(AppText.identityCardRequired),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            context.tr(AppText.identityCardRequiredDescription),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onPressed,
+              icon: const Icon(Icons.upload_rounded),
+              label: Text(context.tr(AppText.manageIdentityCard)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

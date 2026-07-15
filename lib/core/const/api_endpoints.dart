@@ -30,6 +30,9 @@ class ApiEndpoints {
   );
   static String customerByEmail(String email) => "$customer/email/$email";
   static String customerById(String id) => "$customer/$id";
+  static String customerIdCards(String id) => "$customer/$id/id-card";
+  static String customerIdCardImage(String id, String side) =>
+      "$customer/$id/id-card/$side";
   static String promotionByCode(String code) => "$promotion/code/$code";
   static String paymentByBooking(int bookingId) =>
       "$payment/booking/$bookingId";

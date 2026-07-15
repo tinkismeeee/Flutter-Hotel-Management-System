@@ -32,7 +32,11 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeScreen(user: widget.user, onProfileTap: () => selectTab(2)),
+      HomeScreen(
+        user: widget.user,
+        onUserUpdated: widget.onUserUpdated,
+        onProfileTap: () => selectTab(2),
+      ),
       MyBookingsScreen(user: widget.user, refreshToken: bookingRefreshToken),
       ProfileScreen(
         user: widget.user,

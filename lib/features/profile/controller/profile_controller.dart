@@ -12,6 +12,13 @@ class ProfileController {
 
   ProfileController({http.Client? client}) : client = client ?? apiClient;
 
+  Future<UserModel> fetchProfile(UserModel currentUser) async {
+    final response = await client
+        .get(Uri.parse(ApiEndpoints.customerById(currentUser.userId)))
+        .timeout(const Duration(seconds: 15));
+    return _userFromResponse(response, currentUser);
+  }
+
   Future<UserModel> updateProfile({
     required UserModel currentUser,
     required String email,
@@ -50,13 +57,49 @@ class ProfileController {
       throw Exception('Cannot connect to the backend.');
     }
 
+    return _userFromResponse(response, currentUser);
+  }
+
+  Future<UserModel> uploadIdCards({
+    required UserModel currentUser,
+    String? frontPath,
+    String? backPath,
+  }) async {
+    final request = http.MultipartRequest(
+      'PUT',
+      Uri.parse(ApiEndpoints.customerIdCards(currentUser.userId)),
+    );
+    if (frontPath != null) {
+      request.files.add(await http.MultipartFile.fromPath('front', frontPath));
+    }
+    if (backPath != null) {
+      request.files.add(await http.MultipartFile.fromPath('back', backPath));
+    }
+    final response = await http.Response.fromStream(
+      await client.send(request).timeout(const Duration(seconds: 30)),
+    );
+    return _userFromResponse(response, currentUser);
+  }
+
+  Future<UserModel> deleteIdCardImage({
+    required UserModel currentUser,
+    required String side,
+  }) async {
+    final response = await client
+        .delete(
+          Uri.parse(ApiEndpoints.customerIdCardImage(currentUser.userId, side)),
+        )
+        .timeout(const Duration(seconds: 15));
+    return _userFromResponse(response, currentUser);
+  }
+
+  UserModel _userFromResponse(http.Response response, UserModel currentUser) {
     dynamic data;
     try {
       data = json.decode(response.body);
     } on FormatException {
       throw Exception('Backend returned an invalid response.');
     }
-
     if (data is! Map<String, dynamic>) {
       throw Exception('Invalid profile response.');
     }
@@ -72,12 +115,8 @@ class ProfileController {
       {'data': Map<String, dynamic> user} => user,
       _ => data,
     };
-    final updatedUser = UserModel.fromJson(userJson);
-
-    return updatedUser.copyWith(
-      password: currentUser.password,
-      idCardFont: currentUser.idCardFont,
-      idCardBack: currentUser.idCardBack,
-    );
+    return UserModel.fromJson(
+      userJson,
+    ).copyWith(password: currentUser.password);
   }
 }
