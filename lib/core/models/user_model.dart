@@ -20,6 +20,7 @@ class UserModel {
   final String idCardFont;
   final String idCardBack;
   final bool isActive;
+  final bool isAdmin;
 
   // Constructor
   UserModel({
@@ -35,6 +36,7 @@ class UserModel {
     this.idCardFont = "",
     this.idCardBack = "",
     this.isActive = true,
+    this.isAdmin = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -42,8 +44,7 @@ class UserModel {
       userId: json['user_id']?.toString() ?? '',
       username: json['username']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
-      password:
-          (json['password'] ?? json['password_hash'])?.toString() ?? '',
+      password: (json['password'] ?? json['password_hash'])?.toString() ?? '',
       firstName: json['first_name']?.toString() ?? '',
       lastName: json['last_name']?.toString() ?? '',
       phone: json['phone_number']?.toString() ?? '',
@@ -52,6 +53,7 @@ class UserModel {
       idCardFont: json['id_card_front_image_url']?.toString() ?? '',
       idCardBack: json['id_card_back_image_url']?.toString() ?? '',
       isActive: json['is_active'] == true,
+      isAdmin: json['is_admin'] == true,
     );
   }
 
@@ -67,6 +69,7 @@ class UserModel {
       'address': address,
       'date_of_birth': dateOfBirth,
       'is_active': isActive,
+      'is_admin': isAdmin,
     };
   }
 

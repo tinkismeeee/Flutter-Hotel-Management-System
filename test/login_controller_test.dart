@@ -22,6 +22,83 @@ void main() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });
 
+  test('local admin login skips HTTP and persists admin session', () async {
+    var postCalls = 0;
+    final controller = LoginController(
+      adminPassword: '12345678',
+      post: (uri, {headers, body, encoding}) async {
+        postCalls++;
+        throw StateError('HTTP must not run');
+      },
+    );
+
+    final user = await controller.login(
+      email: 'admin@gmail.com',
+      password: '12345678',
+      rememberPassword: true,
+    );
+
+    expect(postCalls, 0);
+    expect(user.email, 'admin@gmail.com');
+    expect(user.isAdmin, isTrue);
+    expect((await UserModel.loadCurrentUser())?.isAdmin, isTrue);
+  });
+
+  test('local admin login respects disabled session persistence', () async {
+    final controller = LoginController(
+      adminPassword: '12345678',
+      post: (uri, {headers, body, encoding}) async =>
+          throw StateError('HTTP must not run'),
+    );
+
+    final user = await controller.login(
+      email: 'admin@gmail.com',
+      password: '12345678',
+      rememberPassword: false,
+    );
+
+    expect(user.isAdmin, isTrue);
+    expect(await UserModel.loadCurrentUser(), isNull);
+  });
+
+  test('wrong local admin password continues to customer backend', () async {
+    var postCalls = 0;
+    final controller = LoginController(
+      adminPassword: '12345678',
+      post: (uri, {headers, body, encoding}) async {
+        postCalls++;
+        return http.Response(
+          jsonEncode({'message': 'Invalid email or password'}),
+          401,
+        );
+      },
+    );
+
+    await expectLater(
+      controller.login(
+        email: 'admin@gmail.com',
+        password: 'wrong-password',
+        rememberPassword: true,
+      ),
+      throwsA(
+        isA<Exception>().having(
+          (error) => error.toString(),
+          'message',
+          contains('Invalid email or password'),
+        ),
+      ),
+    );
+    expect(postCalls, 1);
+  });
+
+  test('UserModel persistence preserves isAdmin', () async {
+    final user = UserModel.fromJson({...userJson, 'is_admin': true});
+
+    await UserModel.saveCurrentUser(user);
+
+    expect((await UserModel.loadCurrentUser())?.isAdmin, isTrue);
+  });
+
   test(
     'googleLogin posts the ID token and persists the returned user',
     () async {
@@ -55,7 +132,9 @@ void main() {
       expect(postedHeaders, const {'Content-Type': 'application/json'});
       expect(jsonDecode(postedBody), const {'idToken': 'google-id-token'});
       expect(user.userId, '42');
+      expect(user.isAdmin, isFalse);
       expect((await UserModel.loadCurrentUser())?.email, 'google@example.com');
+      expect((await UserModel.loadCurrentUser())?.isAdmin, isFalse);
       expect(
         (await SharedPreferences.getInstance()).getString('current_user'),
         isNot(contains('google-id-token')),
@@ -69,7 +148,7 @@ void main() {
       post: (uri, {headers, body, encoding}) async => http.Response(
         jsonEncode(<String, Object>{
           'message': 'Google login successful',
-          'user': userJson,
+          'user': {...userJson, 'is_admin': true},
         }),
         201,
       ),
@@ -78,7 +157,9 @@ void main() {
     final user = await controller.googleLogin();
 
     expect(user.email, 'google@example.com');
+    expect(user.isAdmin, isFalse);
     expect((await UserModel.loadCurrentUser())?.email, 'google@example.com');
+    expect((await UserModel.loadCurrentUser())?.isAdmin, isFalse);
   });
 
   test('googleLogin propagates a backend message', () async {

@@ -24,19 +24,50 @@ class GoogleLoginCanceled implements Exception {
 }
 
 class LoginController {
+  static const _adminEmail = 'admin@gmail.com';
+
   final HttpPost _post;
   final GoogleTokenProvider _googleTokenProvider;
+  final String _adminPassword;
 
-  LoginController({HttpPost? post, GoogleTokenProvider? googleTokenProvider})
-    : _post = post ?? http.post,
-      _googleTokenProvider =
-          googleTokenProvider ?? GoogleSignInTokenProvider.instance.getIdToken;
+  LoginController({
+    HttpPost? post,
+    GoogleTokenProvider? googleTokenProvider,
+    String? adminPassword,
+  }) : _post = post ?? http.post,
+       _googleTokenProvider =
+           googleTokenProvider ?? GoogleSignInTokenProvider.instance.getIdToken,
+       _adminPassword =
+           adminPassword ?? const String.fromEnvironment('DEMO_ADMIN_PASSWORD');
 
   Future<UserModel> login({
     required String email,
     required String password,
     required bool rememberPassword,
   }) async {
+    if (_adminPassword.isNotEmpty &&
+        email.trim().toLowerCase() == _adminEmail &&
+        password == _adminPassword) {
+      final admin = UserModel(
+        userId: 'local-admin',
+        username: 'admin',
+        email: _adminEmail,
+        password: '',
+        firstName: 'Admin',
+        lastName: '',
+        phone: '',
+        address: '',
+        dateOfBirth: '',
+        isAdmin: true,
+      );
+      if (rememberPassword) {
+        await UserModel.saveCurrentUser(admin);
+      } else {
+        await UserModel.clearCurrentUser();
+      }
+      return admin;
+    }
+
     final response = await _post(
       Uri.parse(ApiEndpoints.customerLogin),
       headers: const {'Content-Type': 'application/json'},
@@ -88,7 +119,7 @@ class LoginController {
       throw Exception('Invalid Google login response');
     }
 
-    final user = UserModel.fromJson(userJson);
+    final user = UserModel.fromJson({...userJson, 'is_admin': false});
     await UserModel.saveCurrentUser(user);
     return user;
   }
