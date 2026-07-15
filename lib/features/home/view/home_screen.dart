@@ -7,8 +7,9 @@ import '../../detail_rooms/view/detail_room_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserModel user;
+  final VoidCallback? onAccountTap;
 
-  const HomeScreen({super.key, required this.user});
+  const HomeScreen({super.key, required this.user, this.onAccountTap});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -206,6 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       user: widget.user,
                       searchController: searchController,
                       onSearchChanged: searchRooms,
+                      onAccountTap: widget.onAccountTap,
                       onFilterPressed: () {
                         scaffoldKey.currentState?.openDrawer();
                       },
@@ -275,12 +277,14 @@ class _Header extends StatelessWidget {
   final UserModel user;
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
+  final VoidCallback? onAccountTap;
   final VoidCallback onFilterPressed;
 
   const _Header({
     required this.user,
     required this.searchController,
     required this.onSearchChanged,
+    required this.onAccountTap,
     required this.onFilterPressed,
   });
 
@@ -299,41 +303,52 @@ class _Header extends StatelessWidget {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: const Color(0xFFEEF4FF),
-                child: Text(
-                  _initials(user),
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Welcome back',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                child: InkWell(
+                  key: const Key('customerHeaderAccountButton'),
+                  onTap: onAccountTap,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 26,
+                        backgroundColor: const Color(0xFFEEF4FF),
+                        child: Text(
+                          _initials(user),
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
-                    ),
-                    Text(
-                      fullName.isEmpty ? user.username : fullName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Welcome back',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              fullName.isEmpty ? user.username : fullName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               IconButton.filledTonal(
