@@ -11,6 +11,7 @@ class Booking {
   final int? numberOfNights;
   final double? totalPrice;
   final String username;
+  final List<int> roomIds;
 
   Booking({
     required this.bookingId,
@@ -25,6 +26,7 @@ class Booking {
     required this.numberOfNights,
     required this.totalPrice,
     required this.username,
+    required this.roomIds,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -43,6 +45,40 @@ class Booking {
           ? null
           : double.tryParse(json['total_price'].toString()),
       username: json['username'] ?? '',
+      roomIds: _readRoomIds(json),
     );
+  }
+
+  static List<int> _readRoomIds(Map<String, dynamic> json) {
+    final directRoomId = _readInt(json['room_id'] ?? json['roomId']);
+    if (directRoomId != null) return [directRoomId];
+
+    final roomIds = json['room_ids'] ?? json['roomIds'];
+    if (roomIds is List) {
+      return roomIds.map(_readInt).whereType<int>().toList();
+    }
+
+    final rooms = json['rooms'];
+    if (rooms is List) {
+      return rooms
+          .map((room) {
+            if (room is Map<String, dynamic>) {
+              return _readInt(room['room_id'] ?? room['roomId'] ?? room['id']);
+            }
+
+            return _readInt(room);
+          })
+          .whereType<int>()
+          .toList();
+    }
+
+    return const [];
+  }
+
+  static int? _readInt(dynamic value) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 }

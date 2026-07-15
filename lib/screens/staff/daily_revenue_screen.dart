@@ -44,6 +44,7 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
       ),
       firstDate: DateTime(2020),
       lastDate: DateTime(2035),
+      builder: datePickerTheme,
     );
 
     if (range != null) {
@@ -80,6 +81,68 @@ class _DailyRevenueScreenState extends State<DailyRevenueScreen> {
     if (sameDay) return shortDate(selectedStartDate);
 
     return '${shortDate(selectedStartDate)} - ${shortDate(selectedEndDate)}';
+  }
+
+  Widget datePickerTheme(BuildContext context, Widget? child) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: const ColorScheme.light(
+          primary: AppColors.navy,
+          onPrimary: Colors.white,
+          secondary: AppColors.gold,
+          onSecondary: AppColors.navy,
+          surface: Colors.white,
+          onSurface: AppColors.textDark,
+        ),
+        datePickerTheme: DatePickerThemeData(
+          backgroundColor: Colors.white,
+          headerBackgroundColor: AppColors.navy,
+          headerForegroundColor: Colors.white,
+          rangePickerBackgroundColor: Colors.white,
+          rangePickerHeaderBackgroundColor: AppColors.navy,
+          rangePickerHeaderForegroundColor: Colors.white,
+          rangePickerHeaderHelpStyle: const TextStyle(
+            color: Colors.white70,
+            fontWeight: FontWeight.w600,
+          ),
+          rangePickerHeaderHeadlineStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+          ),
+          dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return Colors.white;
+            }
+            if (states.contains(WidgetState.disabled)) {
+              return AppColors.textGray.withValues(alpha: 0.45);
+            }
+            return AppColors.textDark;
+          }),
+          dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppColors.navy;
+            }
+            return null;
+          }),
+          todayForegroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return Colors.white;
+            }
+            return AppColors.navy;
+          }),
+          todayBorder: const BorderSide(color: AppColors.gold, width: 2),
+          rangeSelectionBackgroundColor: AppColors.gold.withValues(alpha: 0.20),
+          rangeSelectionOverlayColor: WidgetStateProperty.all(
+            AppColors.gold.withValues(alpha: 0.12),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: AppColors.navy),
+        ),
+      ),
+      child: child ?? const SizedBox.shrink(),
+    );
   }
 
   List<DateTime> datesInRange() {
