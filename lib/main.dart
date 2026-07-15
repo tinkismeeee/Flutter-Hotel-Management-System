@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'features/customer/view/customer_shell.dart';
+import 'features/home/view/home_screen.dart';
 import 'features/login/controller/login_controller.dart';
 import './features/login/view/login_screen.dart';
 import 'core/models/user_model.dart';
@@ -44,7 +44,7 @@ class _MyAppState extends State<MyApp> {
     if (user.isStaff) {
       return StaffHomeScreen(onLogout: clearSession);
     }
-    return CustomerShell(user: user, onLogout: clearSession);
+    return HomeScreen(user: user);
   }
 
   @override

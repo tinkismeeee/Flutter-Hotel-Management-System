@@ -27,31 +27,6 @@ class CustomerService {
     }
   }
 
-  static Future<Customer> getCustomerById(String userId) async {
-    if (userId.trim().isEmpty) {
-      throw ArgumentError.value(userId, 'userId', 'Must not be empty');
-    }
-
-    final response = await http.get(
-      Uri.parse(ApiEndpoints.customerById(userId)),
-      headers: authHeaders,
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Unable to load customer profile');
-    }
-
-    final decoded = jsonDecode(response.body);
-    final data = decoded is Map<String, dynamic> && decoded['data'] is Map
-        ? decoded['data']
-        : decoded;
-    if (data is! Map<String, dynamic>) {
-      throw Exception('Invalid customer profile response');
-    }
-
-    return Customer.fromJson(data);
-  }
-
   static Future<bool> addCustomer({
     required String username,
     required String password,
