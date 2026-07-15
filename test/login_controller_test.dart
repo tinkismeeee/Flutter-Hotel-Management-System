@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  const testPassword = 'local-test-password';
   const userJson = <String, dynamic>{
     'user_id': '42',
     'username': 'google-user',
@@ -25,7 +26,7 @@ void main() {
   test('local admin login skips HTTP and persists admin session', () async {
     var postCalls = 0;
     final controller = LoginController(
-      adminPassword: '12345678',
+      adminPassword: testPassword,
       post: (uri, {headers, body, encoding}) async {
         postCalls++;
         throw StateError('HTTP must not run');
@@ -34,7 +35,7 @@ void main() {
 
     final user = await controller.login(
       email: 'admin@gmail.com',
-      password: '12345678',
+      password: testPassword,
       rememberPassword: true,
     );
 
@@ -46,14 +47,14 @@ void main() {
 
   test('local admin login respects disabled session persistence', () async {
     final controller = LoginController(
-      adminPassword: '12345678',
+      adminPassword: testPassword,
       post: (uri, {headers, body, encoding}) async =>
           throw StateError('HTTP must not run'),
     );
 
     final user = await controller.login(
       email: 'admin@gmail.com',
-      password: '12345678',
+      password: testPassword,
       rememberPassword: false,
     );
 
@@ -64,7 +65,7 @@ void main() {
   test('wrong local admin password continues to backend login', () async {
     var postCalls = 0;
     final controller = LoginController(
-      adminPassword: '12345678',
+      adminPassword: testPassword,
       post: (uri, {headers, body, encoding}) async {
         postCalls++;
         return http.Response(
@@ -122,7 +123,7 @@ void main() {
 
     final user = await controller.login(
       email: 'staff@example.com',
-      password: '12345678',
+      password: testPassword,
       rememberPassword: true,
     );
 
@@ -151,7 +152,7 @@ void main() {
 
     final user = await controller.login(
       email: 'customer@example.com',
-      password: '12345678',
+      password: testPassword,
       rememberPassword: false,
     );
 
@@ -171,7 +172,7 @@ void main() {
     await expectLater(
       controller.login(
         email: 'staff@example.com',
-        password: '12345678',
+        password: testPassword,
         rememberPassword: false,
       ),
       throwsA(
