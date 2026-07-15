@@ -49,7 +49,7 @@ class StaffHomeScreen extends StatelessWidget {
               child: const Column(
                 children: [
                   Text(
-                    'MAISON.',
+                    'UMT HOTEL',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 34,

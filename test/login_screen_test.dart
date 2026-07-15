@@ -13,6 +13,32 @@ void main() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });
 
+  testWidgets('hard-coded admin credentials bypass email validation', (
+    tester,
+  ) async {
+    var loggedIn = false;
+    final controller = LoginController(
+      post: (uri, {headers, body, encoding}) async =>
+          throw StateError('Backend must not run'),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LoginPage(
+          loginController: controller,
+          onLoggedIn: (user) => loggedIn = user.isAdmin,
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'admin');
+    await tester.enterText(find.byType(TextFormField).at(1), '12345678');
+    await tester.tap(find.byType(ElevatedButton));
+    await tester.pumpAndSettle();
+
+    expect(loggedIn, isTrue);
+  });
+
   testWidgets('Google button logs in and reports the returned user', (
     tester,
   ) async {

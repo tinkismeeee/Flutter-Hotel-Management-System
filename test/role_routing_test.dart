@@ -114,7 +114,7 @@ UserModel _user({bool isAdmin = false, bool isStaff = false}) {
     userId: isAdmin ? 'admin' : (isStaff ? 'staff' : 'customer'),
     username: isAdmin ? 'admin' : (isStaff ? 'staff' : 'customer'),
     email: isAdmin
-        ? 'admin@gmail.com'
+        ? 'admin'
         : (isStaff ? 'staff@example.com' : 'customer@example.com'),
     password: '',
     firstName: '',

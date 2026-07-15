@@ -11,12 +11,10 @@ Flutter application for hotel customers, administrators, and hotel staff.
 
 ## Login Roles
 
-- Local demo admin opens `AdminScreen` without a database account.
+- Local demo admin uses `admin` / `12345678` and opens `AdminScreen`
+  without a database account.
 - Backend users with `is_staff = true` open `StaffHomeScreen`.
 - Other password and Google users open the customer home.
-
-Create a local admin configuration from `admin.demo.example.json`, set
-`DEMO_ADMIN_PASSWORD`, and keep the resulting `admin.demo.json` untracked.
 
 ## API
 
@@ -32,7 +30,7 @@ Override it with `--dart-define=API_BASE_URL=https://your-api.example.com/api`.
 
 ```powershell
 flutter pub get
-flutter run --dart-define-from-file=admin.demo.json
+flutter run
 flutter run -d chrome --web-port 8080
 ```
 
@@ -44,7 +42,7 @@ client's Authorized JavaScript origins in Google Cloud Console.
 ```powershell
 flutter analyze --no-fatal-infos
 flutter test --no-pub
-flutter build apk --debug --dart-define-from-file=admin.demo.json
+flutter build apk --debug
 ```
 
 The Android debug APK is generated at:

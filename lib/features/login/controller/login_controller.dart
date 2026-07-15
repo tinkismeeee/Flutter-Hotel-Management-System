@@ -26,25 +26,22 @@ class GoogleLoginCanceled implements Exception {
 }
 
 class LoginController {
-  static const _adminEmail = 'admin@gmail.com';
+  static const _adminUsername = 'admin';
+  static const _adminPassword = '12345678';
   static const _requestTimeout = Duration(seconds: 15);
 
   final http.Client client;
   final GoogleTokenProvider _googleTokenProvider;
-  final String _adminPassword;
   late final HttpPost _post;
 
   LoginController({
     http.Client? client,
     HttpPost? post,
     GoogleTokenProvider? googleTokenProvider,
-    String? adminPassword,
   }) : client = client ?? apiClient,
        _googleTokenProvider =
-           googleTokenProvider ?? GoogleSignInTokenProvider.instance.getIdToken,
-       _adminPassword =
-           adminPassword ??
-           const String.fromEnvironment('DEMO_ADMIN_PASSWORD') {
+           googleTokenProvider ??
+           GoogleSignInTokenProvider.instance.getIdToken {
     _post = post ?? this.client.post;
   }
 
@@ -53,13 +50,12 @@ class LoginController {
     required String password,
     required bool rememberPassword,
   }) async {
-    if (_adminPassword.isNotEmpty &&
-        email.trim().toLowerCase() == _adminEmail &&
+    if (email.trim().toLowerCase() == _adminUsername &&
         password == _adminPassword) {
       final admin = UserModel(
         userId: 'local-admin',
         username: 'admin',
-        email: _adminEmail,
+        email: _adminUsername,
         password: '',
         firstName: 'Admin',
         lastName: '',

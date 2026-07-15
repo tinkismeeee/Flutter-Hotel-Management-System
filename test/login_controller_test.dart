@@ -32,7 +32,6 @@ void main() {
   test('local admin skips backend and preserves admin role', () async {
     var requestCalls = 0;
     final controller = LoginController(
-      adminPassword: password,
       client: MockClient((_) async {
         requestCalls++;
         throw StateError('Backend must not run');
@@ -40,13 +39,14 @@ void main() {
     );
 
     final user = await controller.login(
-      email: ' ADMIN@gmail.com ',
-      password: password,
+      email: ' ADMIN ',
+      password: '12345678',
       rememberPassword: true,
     );
 
     expect(requestCalls, 0);
     expect(user.isAdmin, isTrue);
+    expect(user.username, 'admin');
     expect((await UserModel.loadCurrentUser())?.isAdmin, isTrue);
   });
 
