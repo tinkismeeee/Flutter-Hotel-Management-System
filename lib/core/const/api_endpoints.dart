@@ -26,6 +26,16 @@ class ApiEndpoints {
   static String paymentByBooking(int bookingId) =>
       "$payment/booking/$bookingId";
   static String reviewsByRoom(int roomId) => "$review/room/$roomId";
+  static Uri roomBookedRanges({
+    required int roomId,
+    required DateTime from,
+    required DateTime to,
+  }) {
+    return Uri.parse(
+      "$room/$roomId/booked-ranges",
+    ).replace(queryParameters: {'from': _utcDate(from), 'to': _utcDate(to)});
+  }
+
   static String reviewEligibility({
     required int userId,
     required int roomId,
@@ -34,4 +44,8 @@ class ApiEndpoints {
       "$review/eligibility?userId=$userId&roomId=$roomId"
       "${bookingId == null ? '' : '&bookingId=$bookingId'}";
   static String bookingsByUser(int userId) => "$booking/user/$userId";
+
+  static String _utcDate(DateTime date) {
+    return DateTime.utc(date.year, date.month, date.day).toIso8601String();
+  }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/const/api_endpoints.dart';
+import '../../../core/models/booked_range_model.dart';
 import '../../../core/models/booking_service_model.dart';
 import '../../../core/models/room_model.dart';
 import '../../../core/models/room_review_model.dart';
@@ -11,6 +12,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/colors.dart';
 import '../../payment/view/payment_confirmation_screen.dart';
+import 'widgets/booked_date_range_picker.dart';
 
 class DetailRoomScreen extends StatefulWidget {
   final int roomId;
@@ -250,9 +252,11 @@ class _DetailBody extends StatefulWidget {
 class _DetailBodyState extends State<_DetailBody> {
   final selectedServices = <int>{};
   final guestController = TextEditingController(text: '1');
+  List<BookedRangeModel> bookedRanges = const [];
   DateTimeRange? stayRange;
   String? guestError;
   bool descriptionExpanded = false;
+  bool isLoadingBookedRanges = false;
 
   int get nights => stayRange?.duration.inDays ?? 1;
   int get guestCount => int.tryParse(guestController.text.trim()) ?? 0;
@@ -383,6 +387,8 @@ class _DetailBodyState extends State<_DetailBody> {
                     _StayPicker(
                       stayRange: stayRange,
                       nights: nights,
+                      isLoading: isLoadingBookedRanges,
+                      hasBookedDates: bookedRanges.isNotEmpty,
                       onTap: pickStayRange,
                     ),
                     const SizedBox(height: 14),
@@ -484,27 +490,83 @@ class _DetailBodyState extends State<_DetailBody> {
   Future<void> pickStayRange() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final range = await showDateRangePicker(
+    final lastDate = DateTime(today.year + 1, today.month, today.day);
+    if (!await loadBookedRanges(today, lastDate)) return;
+    if (!mounted) return;
+
+    final currentRange = stayRange;
+    final range = await showBookedDateRangePicker(
       context: context,
       firstDate: today,
-      lastDate: DateTime(today.year + 1, today.month, today.day),
+      lastDate: lastDate,
+      bookedRanges: bookedRanges,
       initialDateRange:
-          stayRange ??
-          DateTimeRange(start: today, end: today.add(const Duration(days: 1))),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(
-              context,
-            ).colorScheme.copyWith(primary: AppColors.primary),
-          ),
-          child: child!,
-        );
-      },
+          currentRange != null && !overlapsBookedRange(currentRange)
+          ? currentRange
+          : null,
     );
 
     if (range == null || range.duration.inDays < 1) return;
+    if (overlapsBookedRange(range)) {
+      showMessage('The selected stay includes dates that are already booked.');
+      return;
+    }
     setState(() => stayRange = range);
+  }
+
+  Future<bool> loadBookedRanges(DateTime from, DateTime to) async {
+    if (isLoadingBookedRanges) return false;
+    setState(() => isLoadingBookedRanges = true);
+
+    try {
+      final response = await apiClient.get(
+        ApiEndpoints.roomBookedRanges(
+          roomId: widget.room.roomId,
+          from: from,
+          to: to.add(const Duration(days: 1)),
+        ),
+      );
+      final jsonData = json.decode(response.body);
+      if (response.statusCode != 200) {
+        final message = jsonData is Map<String, dynamic>
+            ? (jsonData['error'] ?? jsonData['message'])?.toString()
+            : null;
+        throw Exception(message ?? 'Unable to load booked dates');
+      }
+      if (jsonData is! Map<String, dynamic> ||
+          jsonData['booked_ranges'] is! List) {
+        throw const FormatException('Invalid booked ranges response');
+      }
+
+      final ranges = (jsonData['booked_ranges'] as List)
+          .whereType<Map<String, dynamic>>()
+          .map(BookedRangeModel.fromJson)
+          .toList();
+      if (!mounted) return false;
+      setState(() => bookedRanges = ranges);
+      return true;
+    } catch (error) {
+      if (mounted) {
+        showMessage(error.toString().replaceFirst('Exception: ', ''));
+      }
+      return false;
+    } finally {
+      if (mounted) setState(() => isLoadingBookedRanges = false);
+    }
+  }
+
+  bool overlapsBookedRange(DateTimeRange range) {
+    return overlapsDates(range.start, range.end);
+  }
+
+  bool overlapsDates(DateTime start, DateTime end) {
+    return bookedRanges.any((range) => range.overlaps(start, end));
+  }
+
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void validateGuests(String value) {
@@ -1031,18 +1093,22 @@ class _GuestInput extends StatelessWidget {
 class _StayPicker extends StatelessWidget {
   final DateTimeRange? stayRange;
   final int nights;
+  final bool isLoading;
+  final bool hasBookedDates;
   final VoidCallback onTap;
 
   const _StayPicker({
     required this.stayRange,
     required this.nights,
+    required this.isLoading,
+    required this.hasBookedDates,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap,
+      onTap: isLoading ? null : onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
         width: double.infinity,
@@ -1055,11 +1121,14 @@ class _StayPicker extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.calendar_today_outlined, color: AppColors.primary),
-                SizedBox(width: 8),
-                Expanded(
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
                   child: Text(
                     'Stay dates',
                     style: TextStyle(
@@ -1069,7 +1138,17 @@ class _StayPicker extends StatelessWidget {
                     ),
                   ),
                 ),
-                Icon(Icons.edit_calendar_outlined, color: AppColors.textMuted),
+                if (isLoading)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  const Icon(
+                    Icons.edit_calendar_outlined,
+                    color: AppColors.textMuted,
+                  ),
               ],
             ),
             const SizedBox(height: 14),
@@ -1105,6 +1184,23 @@ class _StayPicker extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
+            if (hasBookedDates) ...[
+              const SizedBox(height: 8),
+              const Row(
+                children: [
+                  Icon(Icons.circle, size: 9, color: AppColors.danger),
+                  SizedBox(width: 7),
+                  Text(
+                    'Booked dates are marked with red dots',
+                    style: TextStyle(
+                      color: AppColors.danger,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
