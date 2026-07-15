@@ -1,0 +1,24 @@
+import 'dart:convert';
+import '../core/const/api_endpoints.dart';
+import '../core/network/api_client.dart';
+import '../models/invoice.dart';
+
+class InvoiceService {
+  static const String baseUrl = ApiEndpoints.invoice;
+
+  static const Map<String, String> headers = {
+    'Content-Type': 'application/json',
+    'x-user-id': '1',
+  };
+
+  static Future<List<Invoice>> getInvoices() async {
+    final response = await apiClient.get(Uri.parse(baseUrl), headers: headers);
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((e) => Invoice.fromJson(e)).toList();
+    } else {
+      throw Exception('Không thể tải danh sách hóa đơn');
+    }
+  }
+}

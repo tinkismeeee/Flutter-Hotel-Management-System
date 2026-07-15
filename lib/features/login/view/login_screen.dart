@@ -7,11 +7,19 @@ import '../../otp/controller/otp_controller.dart';
 import '../../otp/view/otp_screen.dart';
 import '../../signup/view/signup_screen.dart';
 import '../controller/login_controller.dart';
+import 'widgets/google_login_button.dart';
 
 class LoginPage extends StatefulWidget {
   final ValueChanged<UserModel>? onLoggedIn;
+  final LoginController? loginController;
+  final OtpController? otpController;
 
-  const LoginPage({super.key, this.onLoggedIn});
+  const LoginPage({
+    super.key,
+    this.onLoggedIn,
+    this.loginController,
+    this.otpController,
+  });
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -19,8 +27,8 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-  final LoginController loginController = LoginController();
-  final OtpController otpController = OtpController();
+  late final LoginController loginController;
+  late final OtpController otpController;
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -31,6 +39,13 @@ class _LoginPageState extends State<LoginPage> {
   String? loginError;
 
   bool showErrors = false;
+
+  @override
+  void initState() {
+    super.initState();
+    loginController = widget.loginController ?? LoginController();
+    otpController = widget.otpController ?? OtpController();
+  }
 
   @override
   void dispose() {
@@ -64,6 +79,14 @@ class _LoginPageState extends State<LoginPage> {
         password: password,
         rememberPassword: rememberPassword,
       );
+
+      if (user.isAdmin || user.isStaff) {
+        if (!mounted) return;
+        widget.onLoggedIn?.call(user);
+        debugPrint('Login successful for user: ${user.username}');
+        return;
+      }
+
       await otpController.sendOtp(user.email);
 
       if (!mounted) return;
@@ -97,19 +120,30 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> handleGoogleLogin() async {
     FocusScope.of(context).unfocus();
+    await _handleGoogleLogin(loginController.googleLogin);
+  }
+
+  Future<void> handleGoogleLoginWithIdToken(String idToken) async {
+    await _handleGoogleLogin(
+      () => loginController.googleLoginWithIdToken(idToken),
+    );
+  }
+
+  Future<void> _handleGoogleLogin(
+    Future<UserModel> Function() authenticate,
+  ) async {
     setState(() {
       isLoading = true;
       loginError = null;
     });
 
     try {
-      final user = await loginController.loginWithGoogle();
-      if (user == null) return;
-
-      await UserModel.saveCurrentUser(user);
-
+      final user = await authenticate();
       if (!mounted) return;
       widget.onLoggedIn?.call(user);
+      debugPrint('Google login successful for user: ${user.username}');
+    } on GoogleLoginCanceled {
+      return;
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -122,6 +156,14 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
     }
+  }
+
+  void handleGoogleLoginError(Object error) {
+    if (!mounted) return;
+    setState(() {
+      isLoading = false;
+      loginError = error.toString().replaceFirst('Exception: ', '');
+    });
   }
 
   void hideErrorsWhenUnfocus() {
@@ -414,31 +456,11 @@ class _LoginPageState extends State<LoginPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Semantics(
-                      button: true,
-                      label: context.tr(AppText.signInWithGoogle),
-                      child: InkWell(
-                        onTap: isLoading ? null : handleGoogleLogin,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          height: 72,
-                          width: 72,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF7F7F7),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          alignment: Alignment.center,
-                          child: isLoading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Image.asset('assets/imgs/google_img.png'),
-                        ),
-                      ),
+                    GoogleLoginButton(
+                      enabled: !isLoading,
+                      onTap: handleGoogleLogin,
+                      onIdToken: handleGoogleLoginWithIdToken,
+                      onError: handleGoogleLoginError,
                     ),
                   ],
                 ),

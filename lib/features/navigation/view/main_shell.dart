@@ -37,7 +37,11 @@ class _MainShellState extends State<MainShell> {
         onUserUpdated: widget.onUserUpdated,
         onProfileTap: () => selectTab(2),
       ),
-      MyBookingsScreen(user: widget.user, refreshToken: bookingRefreshToken),
+      MyBookingsScreen(
+        user: widget.user,
+        refreshToken: bookingRefreshToken,
+        onBackToHome: () => selectTab(0),
+      ),
       ProfileScreen(
         user: widget.user,
         onLogout: widget.onLogout,

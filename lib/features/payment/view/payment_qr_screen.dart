@@ -25,6 +25,7 @@ class PaymentQrScreen extends StatefulWidget {
   final PayOsPaymentModel payment;
   final String? discountCode;
   final double discountAmount;
+  final VoidCallback? onBackToHome;
 
   const PaymentQrScreen({
     super.key,
@@ -38,6 +39,7 @@ class PaymentQrScreen extends StatefulWidget {
     required this.payment,
     this.discountCode,
     this.discountAmount = 0,
+    this.onBackToHome,
   });
 
   @override
@@ -237,9 +239,12 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
               height: 54,
               child: ElevatedButton.icon(
                 onPressed: isPaid
-                    ? () => Navigator.of(
-                        context,
-                      ).popUntil((route) => route.isFirst)
+                    ? () {
+                        widget.onBackToHome?.call();
+                        Navigator.of(
+                          context,
+                        ).popUntil((route) => route.isFirst);
+                      }
                     : isCancelled
                     ? () => Navigator.of(context).pop()
                     : isChecking

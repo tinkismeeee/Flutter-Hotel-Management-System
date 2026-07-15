@@ -20,6 +20,8 @@ class UserModel {
   final String idCardFont;
   final String idCardBack;
   final bool isActive;
+  final bool isAdmin;
+  final bool isStaff;
 
   // Constructor
   UserModel({
@@ -35,6 +37,8 @@ class UserModel {
     this.idCardFont = "",
     this.idCardBack = "",
     this.isActive = true,
+    this.isAdmin = false,
+    this.isStaff = false,
   });
 
   UserModel copyWith({
@@ -50,6 +54,8 @@ class UserModel {
     String? idCardFont,
     String? idCardBack,
     bool? isActive,
+    bool? isAdmin,
+    bool? isStaff,
   }) {
     return UserModel(
       userId: userId ?? this.userId,
@@ -64,6 +70,8 @@ class UserModel {
       idCardFont: idCardFont ?? this.idCardFont,
       idCardBack: idCardBack ?? this.idCardBack,
       isActive: isActive ?? this.isActive,
+      isAdmin: isAdmin ?? this.isAdmin,
+      isStaff: isStaff ?? this.isStaff,
     );
   }
 
@@ -81,6 +89,8 @@ class UserModel {
       idCardFont: json['id_card_front_image_url']?.toString() ?? '',
       idCardBack: json['id_card_back_image_url']?.toString() ?? '',
       isActive: json['is_active'] == true,
+      isAdmin: json['is_admin'] == true,
+      isStaff: json['is_staff'] == true,
     );
   }
 
@@ -98,6 +108,8 @@ class UserModel {
       'id_card_front_image_url': idCardFont,
       'id_card_back_image_url': idCardBack,
       'is_active': isActive,
+      'is_admin': isAdmin,
+      'is_staff': isStaff,
     };
   }
 

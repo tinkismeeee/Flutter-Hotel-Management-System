@@ -11,11 +11,13 @@ import '../controller/bookings_controller.dart';
 class MyBookingsScreen extends StatefulWidget {
   final UserModel user;
   final int refreshToken;
+  final VoidCallback? onBackToHome;
 
   const MyBookingsScreen({
     super.key,
     required this.user,
     this.refreshToken = 0,
+    this.onBackToHome,
   });
 
   @override
@@ -57,7 +59,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
   Future<List<UserBookingModel>> fetchBookings() {
     final userId = int.tryParse(widget.user.userId);
-    if (userId == null) throw Exception('Invalid user session');
+    if (userId == null) {
+      return Future.error(Exception('Invalid user session'));
+    }
     return bookingsController.fetchBookings(userId);
   }
 
@@ -269,6 +273,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                 : stayRange?.duration.inDays ?? 1,
             guests: booking.totalGuests,
             payment: payment,
+            onBackToHome: widget.onBackToHome,
           ),
         ),
       );

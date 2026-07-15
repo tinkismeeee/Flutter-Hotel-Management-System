@@ -1,0 +1,22 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hotel_system_management/core/const/api_endpoints.dart';
+
+void main() {
+  test('all hotel APIs use the configured server', () {
+    expect(
+      ApiEndpoints.baseUrl,
+      'https://nationally-amused-horse.ngrok-free.app/api',
+    );
+    expect(ApiEndpoints.room, '${ApiEndpoints.baseUrl}/rooms');
+    expect(ApiEndpoints.roomTypes, '${ApiEndpoints.baseUrl}/room-types');
+    expect(ApiEndpoints.customer, '${ApiEndpoints.baseUrl}/customers');
+    expect(ApiEndpoints.customerGoogleLogin, '${ApiEndpoints.customer}/google');
+    expect(ApiEndpoints.booking, '${ApiEndpoints.baseUrl}/bookings');
+    expect(ApiEndpoints.service, '${ApiEndpoints.baseUrl}/services');
+    expect(ApiEndpoints.promotion, '${ApiEndpoints.baseUrl}/promotions');
+    expect(ApiEndpoints.invoice, '${ApiEndpoints.baseUrl}/invoices');
+    expect(ApiEndpoints.staff, '${ApiEndpoints.baseUrl}/staff');
+    expect(ApiEndpoints.staffLogin, '${ApiEndpoints.staff}/login');
+    expect(ApiEndpoints.payment, '${ApiEndpoints.baseUrl}/payments');
+  });
+}

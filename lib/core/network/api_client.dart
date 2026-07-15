@@ -9,7 +9,10 @@ class ApiClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
-    request.headers[ngrokSkipBrowserWarningHeader] = 'true';
+    if (request.url.host.endsWith('.ngrok-free.app') ||
+        request.url.host.endsWith('.ngrok.io')) {
+      request.headers[ngrokSkipBrowserWarningHeader] = 'true';
+    }
     return _inner.send(request);
   }
 
