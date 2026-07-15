@@ -9,8 +9,14 @@ import '../../profile/view/profile_screen.dart';
 class MainShell extends StatefulWidget {
   final UserModel user;
   final Future<void> Function() onLogout;
+  final ValueChanged<UserModel> onUserUpdated;
 
-  const MainShell({super.key, required this.user, required this.onLogout});
+  const MainShell({
+    super.key,
+    required this.user,
+    required this.onLogout,
+    required this.onUserUpdated,
+  });
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -23,9 +29,13 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeScreen(user: widget.user),
+      HomeScreen(user: widget.user, onProfileTap: () => selectTab(2)),
       MyBookingsScreen(user: widget.user, refreshToken: bookingRefreshToken),
-      ProfileScreen(user: widget.user, onLogout: widget.onLogout),
+      ProfileScreen(
+        user: widget.user,
+        onLogout: widget.onLogout,
+        onUserUpdated: widget.onUserUpdated,
+      ),
     ];
 
     return PopScope(
@@ -41,16 +51,18 @@ class _MainShellState extends State<MainShell> {
         body: IndexedStack(index: selectedIndex, children: pages),
         bottomNavigationBar: _MainNavigationBar(
           selectedIndex: selectedIndex,
-          onSelected: (index) {
-            if (index == selectedIndex) return;
-            setState(() {
-              selectedIndex = index;
-              if (index == 1) bookingRefreshToken++;
-            });
-          },
+          onSelected: selectTab,
         ),
       ),
     );
+  }
+
+  void selectTab(int index) {
+    if (index == selectedIndex) return;
+    setState(() {
+      selectedIndex = index;
+      if (index == 1) bookingRefreshToken++;
+    });
   }
 }
 

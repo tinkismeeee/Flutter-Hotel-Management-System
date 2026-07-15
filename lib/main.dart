@@ -24,6 +24,12 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  void updateSessionUser(UserModel user) {
+    setState(() {
+      sessionUser = user;
+    });
+  }
+
   Future<void> clearSessionUser() async {
     if (!mounted) return;
     setState(() => sessionUser = null);
@@ -35,7 +41,11 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: sessionUser != null
-          ? MainShell(user: sessionUser!, onLogout: clearSessionUser)
+          ? MainShell(
+              user: sessionUser!,
+              onLogout: clearSessionUser,
+              onUserUpdated: updateSessionUser,
+            )
           : FutureBuilder<UserModel?>(
               future: UserModel.loadCurrentUser(),
               builder: (context, snapshot) {
@@ -50,7 +60,11 @@ class _MyAppState extends State<MyApp> {
                   return LoginPage(onLoggedIn: setSessionUser);
                 }
 
-                return MainShell(user: user, onLogout: clearSessionUser);
+                return MainShell(
+                  user: user,
+                  onLogout: clearSessionUser,
+                  onUserUpdated: updateSessionUser,
+                );
               },
             ),
     );

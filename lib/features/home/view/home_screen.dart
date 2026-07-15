@@ -7,8 +7,9 @@ import '../../detail_rooms/view/detail_room_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserModel user;
+  final VoidCallback onProfileTap;
 
-  const HomeScreen({super.key, required this.user});
+  const HomeScreen({super.key, required this.user, required this.onProfileTap});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -192,6 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       searchController: searchController,
                       onSearchChanged: searchRooms,
                       onFilterPressed: openFilterSheet,
+                      onProfileTap: widget.onProfileTap,
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -259,12 +261,14 @@ class _Header extends StatelessWidget {
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onFilterPressed;
+  final VoidCallback onProfileTap;
 
   const _Header({
     required this.user,
     required this.searchController,
     required this.onSearchChanged,
     required this.onFilterPressed,
+    required this.onProfileTap,
   });
 
   @override
@@ -282,14 +286,23 @@ class _Header extends StatelessWidget {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: const Color(0xFFEEF4FF),
-                child: Text(
-                  _initials(user),
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
+              Semantics(
+                button: true,
+                label: 'Open profile',
+                child: InkResponse(
+                  key: const Key('homeProfileAvatar'),
+                  onTap: onProfileTap,
+                  radius: 30,
+                  child: CircleAvatar(
+                    radius: 26,
+                    backgroundColor: const Color(0xFFEEF4FF),
+                    child: Text(
+                      _initials(user),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ),

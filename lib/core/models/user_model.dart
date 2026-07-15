@@ -37,6 +37,36 @@ class UserModel {
     this.isActive = true,
   });
 
+  UserModel copyWith({
+    String? userId,
+    String? username,
+    String? email,
+    String? password,
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? address,
+    String? dateOfBirth,
+    String? idCardFont,
+    String? idCardBack,
+    bool? isActive,
+  }) {
+    return UserModel(
+      userId: userId ?? this.userId,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      idCardFont: idCardFont ?? this.idCardFont,
+      idCardBack: idCardBack ?? this.idCardBack,
+      isActive: isActive ?? this.isActive,
+    );
+  }
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       userId: json['user_id']?.toString() ?? '',
@@ -91,6 +121,12 @@ class UserModel {
 
   static Future<void> saveCurrentUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_currentUserKey, json.encode(user.toJson()));
+  }
+
+  static Future<void> updateSavedCurrentUserIfPresent(UserModel user) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!prefs.containsKey(_currentUserKey)) return;
     await prefs.setString(_currentUserKey, json.encode(user.toJson()));
   }
 
