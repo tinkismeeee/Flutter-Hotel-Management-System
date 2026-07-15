@@ -209,9 +209,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       onFilterPressed: () {
                         scaffoldKey.currentState?.openDrawer();
                       },
-                      onAdminPressed: () {
-                        Navigator.of(context).pushNamed('/admin');
-                      },
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -279,14 +276,12 @@ class _Header extends StatelessWidget {
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onFilterPressed;
-  final VoidCallback onAdminPressed;
 
   const _Header({
     required this.user,
     required this.searchController,
     required this.onSearchChanged,
     required this.onFilterPressed,
-    required this.onAdminPressed,
   });
 
   @override
@@ -348,16 +343,6 @@ class _Header extends StatelessWidget {
                   foregroundColor: AppColors.textPrimary,
                 ),
                 icon: const Icon(Icons.tune),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                onPressed: onAdminPressed,
-                tooltip: 'Administration',
-                style: IconButton.styleFrom(
-                  backgroundColor: AppColors.surface,
-                  foregroundColor: AppColors.textPrimary,
-                ),
-                icon: const Icon(Icons.admin_panel_settings_outlined),
               ),
             ],
           ),
