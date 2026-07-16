@@ -5,8 +5,15 @@ import '../../utils/app_colors.dart';
 
 class BookingDetailScreen extends StatelessWidget {
   final Booking booking;
+  final String customerName;
+  final double? promotionDiscount;
 
-  const BookingDetailScreen({super.key, required this.booking});
+  const BookingDetailScreen({
+    super.key,
+    required this.booking,
+    required this.customerName,
+    this.promotionDiscount,
+  });
 
   String money(double? value) {
     if (value == null) return 'Chưa có';
@@ -65,6 +72,15 @@ class BookingDetailScreen extends StatelessWidget {
       default:
         return AppColors.gold;
     }
+  }
+
+  String promotionLabel() {
+    if (booking.promotionId == null) return 'Không sử dụng';
+    if (promotionDiscount == null) return 'Mã #${booking.promotionId}';
+    final value = promotionDiscount == promotionDiscount!.roundToDouble()
+        ? promotionDiscount!.toStringAsFixed(0)
+        : promotionDiscount!.toStringAsFixed(1);
+    return 'Giảm $value% (Mã #${booking.promotionId})';
   }
 
   Widget section({
@@ -224,9 +240,7 @@ class BookingDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    booking.username.isEmpty
-                        ? 'Khách hàng #${booking.userId}'
-                        : booking.username,
+                    customerName,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 23,
@@ -272,10 +286,7 @@ class BookingDetailScreen extends StatelessWidget {
               icon: Icons.person_rounded,
               children: [
                 detailRow('User ID', '#${booking.userId}'),
-                detailRow(
-                  'Username',
-                  booking.username.isEmpty ? 'Chưa có' : booking.username,
-                ),
+                detailRow('Tên khách hàng', customerName),
                 detailRow('Số khách', '${booking.totalGuests} khách'),
               ],
             ),
@@ -301,12 +312,7 @@ class BookingDetailScreen extends StatelessWidget {
               icon: Icons.payments_rounded,
               children: [
                 detailRow('Tổng tiền', money(booking.totalPrice)),
-                detailRow(
-                  'Khuyến mãi',
-                  booking.promotionId == null
-                      ? 'Không sử dụng'
-                      : '#${booking.promotionId}',
-                ),
+                detailRow('Khuyến mãi', promotionLabel()),
                 detailRow(
                   'Trạng thái',
                   statusLabel(),

@@ -5,8 +5,13 @@ import '../../utils/app_colors.dart';
 
 class EditBookingScreen extends StatefulWidget {
   final Booking booking;
+  final String customerName;
 
-  const EditBookingScreen({super.key, required this.booking});
+  const EditBookingScreen({
+    super.key,
+    required this.booking,
+    required this.customerName,
+  });
 
   @override
   State<EditBookingScreen> createState() => _EditBookingScreenState();
@@ -194,7 +199,7 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
 
           infoRow('Booking ID', widget.booking.bookingId.toString()),
           infoRow('User ID', widget.booking.userId.toString()),
-          infoRow('Username', widget.booking.username),
+          infoRow('Tên khách hàng', widget.customerName),
           infoRow('Ngày đặt', shortDateTime(widget.booking.bookingDate)),
           infoRow('Số khách', widget.booking.totalGuests.toString()),
         ],

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../models/booking.dart';
+import '../../models/customer.dart';
+import '../../models/promotion.dart';
 import '../../models/room.dart';
 import '../../services/booking_service.dart';
+import '../../services/customer_service.dart';
+import '../../services/promotion_service.dart';
 import '../../utils/app_colors.dart';
 
 List<Booking> bookingsForRoom(List<Booking> bookings, int roomId) {
@@ -16,14 +20,30 @@ List<Booking> bookingsForRoom(List<Booking> bookings, int roomId) {
   return result;
 }
 
+class RoomBookingScheduleData {
+  final List<Booking> bookings;
+  final Map<int, String> customerNames;
+  final Map<int, double> promotionDiscounts;
+
+  const RoomBookingScheduleData({
+    required this.bookings,
+    required this.customerNames,
+    required this.promotionDiscounts,
+  });
+}
+
 class RoomBookingScheduleScreen extends StatefulWidget {
   final Room room;
   final Future<List<Booking>> Function()? loadBookings;
+  final Future<List<Customer>> Function()? loadCustomers;
+  final Future<List<Promotion>> Function()? loadPromotions;
 
   const RoomBookingScheduleScreen({
     super.key,
     required this.room,
     this.loadBookings,
+    this.loadCustomers,
+    this.loadPromotions,
   });
 
   @override
@@ -32,7 +52,7 @@ class RoomBookingScheduleScreen extends StatefulWidget {
 }
 
 class _RoomBookingScheduleScreenState extends State<RoomBookingScheduleScreen> {
-  late Future<List<Booking>> bookingFuture;
+  late Future<RoomBookingScheduleData> bookingFuture;
 
   @override
   void initState() {
@@ -40,10 +60,34 @@ class _RoomBookingScheduleScreenState extends State<RoomBookingScheduleScreen> {
     bookingFuture = loadSchedule();
   }
 
-  Future<List<Booking>> loadSchedule() async {
+  Future<RoomBookingScheduleData> loadSchedule() async {
     final bookings =
         await (widget.loadBookings ?? BookingService.getBookings)();
-    return bookingsForRoom(bookings, widget.room.roomId);
+    final customersFuture =
+        (widget.loadCustomers ?? CustomerService.getCustomers)().catchError(
+          (_) => <Customer>[],
+        );
+    final promotionsFuture =
+        (widget.loadPromotions ?? PromotionService.getPromotions)().catchError(
+          (_) => <Promotion>[],
+        );
+    final customers = await customersFuture;
+    final promotions = await promotionsFuture;
+
+    return RoomBookingScheduleData(
+      bookings: bookingsForRoom(bookings, widget.room.roomId),
+      customerNames: {
+        for (final customer in customers)
+          customer.userId: [
+            customer.firstName.trim(),
+            customer.lastName.trim(),
+          ].where((part) => part.isNotEmpty).join(' '),
+      },
+      promotionDiscounts: {
+        for (final promotion in promotions)
+          promotion.promotionId: promotion.discountValue,
+      },
+    );
   }
 
   void refreshData() {
@@ -83,6 +127,21 @@ class _RoomBookingScheduleScreenState extends State<RoomBookingScheduleScreen> {
       default:
         return AppColors.textGray;
     }
+  }
+
+  String customerName(Booking booking, RoomBookingScheduleData data) {
+    final name = data.customerNames[booking.userId]?.trim() ?? '';
+    return name.isEmpty ? 'Khách hàng #${booking.userId}' : name;
+  }
+
+  String promotionLabel(Booking booking, RoomBookingScheduleData data) {
+    if (booking.promotionId == null) return '';
+    final discount = data.promotionDiscounts[booking.promotionId];
+    if (discount == null) return 'Mã #${booking.promotionId}';
+    final value = discount == discount.roundToDouble()
+        ? discount.toStringAsFixed(0)
+        : discount.toStringAsFixed(1);
+    return 'Giảm $value%';
   }
 
   Widget overview(List<Booking> bookings) {
@@ -155,9 +214,10 @@ class _RoomBookingScheduleScreenState extends State<RoomBookingScheduleScreen> {
     );
   }
 
-  Widget bookingCard(Booking booking, bool last) {
+  Widget bookingCard(Booking booking, bool last, RoomBookingScheduleData data) {
     final state = stayState(booking);
     final color = stayColor(state);
+    final promotion = promotionLabel(booking, data);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,11 +338,20 @@ class _RoomBookingScheduleScreenState extends State<RoomBookingScheduleScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  booking.username.isEmpty
-                      ? '${booking.totalGuests} khách'
-                      : '${booking.username} • ${booking.totalGuests} khách',
+                  '${customerName(booking, data)} • '
+                  '${booking.totalGuests} khách',
                   style: const TextStyle(color: AppColors.textGray),
                 ),
+                if (promotion.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    promotion,
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -291,7 +360,9 @@ class _RoomBookingScheduleScreenState extends State<RoomBookingScheduleScreen> {
     );
   }
 
-  Widget schedule(List<Booking> bookings) {
+  Widget schedule(RoomBookingScheduleData data) {
+    final bookings = data.bookings;
+
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -334,8 +405,11 @@ class _RoomBookingScheduleScreenState extends State<RoomBookingScheduleScreen> {
         else
           ...List.generate(
             bookings.length,
-            (index) =>
-                bookingCard(bookings[index], index == bookings.length - 1),
+            (index) => bookingCard(
+              bookings[index],
+              index == bookings.length - 1,
+              data,
+            ),
           ),
       ],
     );
@@ -356,7 +430,7 @@ class _RoomBookingScheduleScreenState extends State<RoomBookingScheduleScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<List<Booking>>(
+      body: FutureBuilder<RoomBookingScheduleData>(
         future: bookingFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -376,7 +450,14 @@ class _RoomBookingScheduleScreenState extends State<RoomBookingScheduleScreen> {
               ),
             );
           }
-          return schedule(snapshot.data ?? const []);
+          return schedule(
+            snapshot.data ??
+                const RoomBookingScheduleData(
+                  bookings: [],
+                  customerNames: {},
+                  promotionDiscounts: {},
+                ),
+          );
         },
       ),
     );

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../models/booking.dart';
+import '../../models/customer.dart';
+import '../../models/promotion.dart';
 import '../../services/booking_service.dart';
+import '../../services/customer_service.dart';
+import '../../services/promotion_service.dart';
 import '../../utils/app_colors.dart';
 import '../widgets/list_query_bar.dart';
 import 'add_booking_screen.dart';
@@ -23,6 +27,18 @@ bool isCurrentHotelBooking(Booking booking, DateTime now) {
   return !today.isBefore(start) && today.isBefore(end);
 }
 
+class BookingAdminData {
+  final List<Booking> bookings;
+  final Map<int, String> customerNames;
+  final Map<int, double> promotionDiscounts;
+
+  const BookingAdminData({
+    required this.bookings,
+    required this.customerNames,
+    required this.promotionDiscounts,
+  });
+}
+
 class BookingListScreen extends StatefulWidget {
   const BookingListScreen({super.key});
 
@@ -31,7 +47,7 @@ class BookingListScreen extends StatefulWidget {
 }
 
 class _BookingListScreenState extends State<BookingListScreen> {
-  late Future<List<Booking>> bookingFuture;
+  late Future<BookingAdminData> bookingFuture;
   String searchQuery = '';
   String sortBy = 'newest';
   String filterBy = 'all';
@@ -40,23 +56,66 @@ class _BookingListScreenState extends State<BookingListScreen> {
   @override
   void initState() {
     super.initState();
-    bookingFuture = BookingService.getBookings();
+    bookingFuture = loadData();
   }
 
   void refreshData() {
     setState(() {
-      bookingFuture = BookingService.getBookings();
+      bookingFuture = loadData();
     });
   }
 
-  List<Booking> applyQuery(List<Booking> bookings) {
+  Future<BookingAdminData> loadData() async {
+    final bookings = await BookingService.getBookings();
+    final customersFuture = CustomerService.getCustomers().catchError(
+      (_) => <Customer>[],
+    );
+    final promotionsFuture = PromotionService.getPromotions().catchError(
+      (_) => <Promotion>[],
+    );
+    final customers = await customersFuture;
+    final promotions = await promotionsFuture;
+
+    return BookingAdminData(
+      bookings: bookings,
+      customerNames: {
+        for (final customer in customers)
+          customer.userId: [
+            customer.firstName.trim(),
+            customer.lastName.trim(),
+          ].where((part) => part.isNotEmpty).join(' '),
+      },
+      promotionDiscounts: {
+        for (final promotion in promotions)
+          promotion.promotionId: promotion.discountValue,
+      },
+    );
+  }
+
+  String customerName(Booking booking, BookingAdminData data) {
+    final name = data.customerNames[booking.userId]?.trim() ?? '';
+    return name.isEmpty ? 'Khách hàng #${booking.userId}' : name;
+  }
+
+  String discountLabel(Booking booking, BookingAdminData data) {
+    if (booking.promotionId == null) return '';
+    final discount = data.promotionDiscounts[booking.promotionId];
+    if (discount == null) return 'Mã #${booking.promotionId}';
+    final value = discount == discount.roundToDouble()
+        ? discount.toStringAsFixed(0)
+        : discount.toStringAsFixed(1);
+    return 'Giảm $value%';
+  }
+
+  List<Booking> applyQuery(BookingAdminData data) {
+    final bookings = data.bookings;
     final query = searchQuery.trim().toLowerCase();
     final now = DateTime.now();
     final result = bookings.where((booking) {
       final matchesSearch =
           query.isEmpty ||
           booking.bookingId.toString().contains(query) ||
-          booking.username.toLowerCase().contains(query) ||
+          customerName(booking, data).toLowerCase().contains(query) ||
           booking.userId.toString().contains(query) ||
           booking.roomNumbers.any(
             (number) => number.toLowerCase().contains(query),
@@ -94,18 +153,27 @@ class _BookingListScreenState extends State<BookingListScreen> {
     refreshData();
   }
 
-  Future<void> goToEdit(Booking booking) async {
+  Future<void> goToEdit(Booking booking, String customerName) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => EditBookingScreen(booking: booking)),
+      MaterialPageRoute(
+        builder: (_) =>
+            EditBookingScreen(booking: booking, customerName: customerName),
+      ),
     );
     refreshData();
   }
 
-  void openDetails(Booking booking) {
+  void openDetails(Booking booking, BookingAdminData data) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => BookingDetailScreen(booking: booking)),
+      MaterialPageRoute(
+        builder: (_) => BookingDetailScreen(
+          booking: booking,
+          customerName: customerName(booking, data),
+          promotionDiscount: data.promotionDiscounts[booking.promotionId],
+        ),
+      ),
     );
   }
 
@@ -273,12 +341,14 @@ class _BookingListScreenState extends State<BookingListScreen> {
     );
   }
 
-  Widget bookingCard(Booking booking) {
+  Widget bookingCard(Booking booking, BookingAdminData data) {
     final current = isCurrentHotelBooking(booking, DateTime.now());
+    final name = customerName(booking, data);
+    final promotion = discountLabel(booking, data);
 
     return InkWell(
       key: ValueKey('booking-${booking.bookingId}'),
-      onTap: () => openDetails(booking),
+      onTap: () => openDetails(booking, data),
       borderRadius: BorderRadius.circular(22),
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
@@ -324,9 +394,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
                     ),
                   ),
                   Text(
-                    booking.username.isEmpty
-                        ? 'User ID: ${booking.userId}'
-                        : booking.username,
+                    name,
                     style: const TextStyle(
                       color: AppColors.gold,
                       fontWeight: FontWeight.w600,
@@ -365,6 +433,14 @@ class _BookingListScreenState extends State<BookingListScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  if (promotion.isNotEmpty)
+                    Text(
+                      promotion,
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -376,7 +452,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
                   color: AppColors.textGray,
                 ),
                 IconButton(
-                  onPressed: () => goToEdit(booking),
+                  onPressed: () => goToEdit(booking, name),
                   icon: const Icon(Icons.edit_rounded, color: AppColors.gold),
                 ),
                 IconButton(
@@ -441,7 +517,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
             ),
 
             Expanded(
-              child: FutureBuilder<List<Booking>>(
+              child: FutureBuilder<BookingAdminData>(
                 future: bookingFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -459,8 +535,15 @@ class _BookingListScreenState extends State<BookingListScreen> {
                     );
                   }
 
-                  final allBookings = snapshot.data ?? [];
-                  final bookings = applyQuery(allBookings);
+                  final data =
+                      snapshot.data ??
+                      const BookingAdminData(
+                        bookings: [],
+                        customerNames: {},
+                        promotionDiscounts: {},
+                      );
+                  final allBookings = data.bookings;
+                  final bookings = applyQuery(data);
 
                   if (allBookings.isEmpty) {
                     return const Center(
@@ -511,7 +594,9 @@ class _BookingListScreenState extends State<BookingListScreen> {
                           ),
                         )
                       else
-                        ...bookings.map(bookingCard),
+                        ...bookings.map(
+                          (booking) => bookingCard(booking, data),
+                        ),
                     ],
                   );
                 },

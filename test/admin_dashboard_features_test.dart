@@ -4,6 +4,7 @@ import 'package:hotel_system_management/models/booking.dart';
 import 'package:hotel_system_management/models/invoice.dart';
 import 'package:hotel_system_management/models/room.dart';
 import 'package:hotel_system_management/screens/booking/booking_list_screen.dart';
+import 'package:hotel_system_management/screens/booking/booking_detail_screen.dart';
 import 'package:hotel_system_management/screens/revenue/invoice_detail_screen.dart';
 import 'package:hotel_system_management/screens/room/room_booking_schedule_screen.dart';
 import 'package:hotel_system_management/screens/widgets/list_query_bar.dart';
@@ -147,6 +148,8 @@ void main() {
               status: 'confirmed',
             ),
           ],
+          loadCustomers: () async => [],
+          loadPromotions: () async => [],
         ),
       ),
     );
@@ -156,6 +159,34 @@ void main() {
     expect(find.text('Check-out: 12/08/2026'), findsOneWidget);
     expect(find.text('Booking #1'), findsOneWidget);
   });
+
+  testWidgets('booking detail shows customer name and promotion percentage', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BookingDetailScreen(
+          booking: booking(
+            checkIn: '2026-08-10',
+            checkOut: '2026-08-12',
+            status: 'confirmed',
+            promotionId: 9,
+          ),
+          customerName: 'Nguyễn Văn An',
+          promotionDiscount: 15,
+        ),
+      ),
+    );
+
+    expect(find.text('Nguyễn Văn An'), findsAtLeastNWidgets(2));
+    await tester.scrollUntilVisible(
+      find.text('Giảm 15% (Mã #9)'),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.text('Giảm 15% (Mã #9)'), findsOneWidget);
+    expect(find.text('Username'), findsNothing);
+  });
 }
 
 Booking booking({
@@ -164,6 +195,7 @@ Booking booking({
   required String status,
   List<int> roomIds = const [101],
   List<String> roomNumbers = const ['101'],
+  int? promotionId,
 }) {
   return Booking(
     bookingId: 1,
@@ -173,7 +205,7 @@ Booking booking({
     checkOut: checkOut,
     status: status,
     totalGuests: 2,
-    promotionId: null,
+    promotionId: promotionId,
     numberOfDays: 3,
     numberOfNights: 3,
     totalPrice: 1000000,
